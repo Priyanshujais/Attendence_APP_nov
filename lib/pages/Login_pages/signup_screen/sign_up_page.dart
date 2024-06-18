@@ -1,5 +1,9 @@
+import 'dart:convert';
+// import 'dart:js_interop';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:zarvis_app/pages/Login_pages/signup_screen/register_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   @override
@@ -9,8 +13,89 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   TextEditingController employeeIdController = TextEditingController();
   String? selectedValue;
+  List<String> companyList = [];
+  String com_id = "";
 
-  final List<String> items = ['Globtier Infotech PVT LTD'];
+  @override
+  void initState() {
+    super.initState();
+    _fetchCompanies();
+  }
+
+  Future<void> _fetchCompanies() async {
+    try {
+      final response = await http.get(Uri.parse('http://35.154.148.75/zarvis/api/v2/companyList'));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> companies = data['dataset'];
+        // print(response.body);
+        setState(() {
+          companyList = companies.map((company) => company['comp_name'].toString()).toList();
+          com_id = data['dataset'][0]['comp_id'].toString();
+          print(com_id);
+        });
+      } else {
+        print('Failed to load companies');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _verifyEmployee() async {
+    String employeeId = employeeIdController.text;
+    String company = selectedValue ?? "";
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v2/verifyEmployee'),
+        body: json.encode({'emp_code': employeeId, 'comp_id': com_id}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['status'] == "1" && responseData['flag'] == "2") {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RegisterScreen(
+                comp_id: com_id,
+                emp_code:employeeId ,
+              ),
+            ),
+          );
+        } else {
+          _showDialog('Signup Failed', responseData['message']);
+        }
+      } else {
+        _showDialog('Signup Failed', 'Failed to verify Employee ID. Please try again later.');
+      }
+    } catch (e) {
+      print('Error: $e');
+      _showDialog('Signup Failed', 'An error occurred. Please try again later.');
+    }
+  }
+
+  void _showDialog(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,9 +105,9 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           Container(
             height: MediaQuery.of(context).size.height / 2.9,
-            width: MediaQuery.of(context).size.width/2.0,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.only(
+            width: MediaQuery.of(context).size.width / 2.0,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.only(
                 bottomRight: Radius.circular(80),
               ),
             ),
@@ -48,19 +133,18 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           Container(
             alignment: Alignment.centerLeft,
-            margin: EdgeInsets.symmetric(
-                horizontal: MediaQuery.of(context).size.width / 12),
+            margin: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width / 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     border: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.black26),
+                      borderSide: const BorderSide(color: Colors.black26),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.redAccent),
+                      borderSide: const BorderSide(color: Colors.redAccent),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     filled: true,
@@ -72,46 +156,42 @@ class _SignupScreenState extends State<SignupScreen> {
                       color: Colors.grey,
                     ),
                     contentPadding: EdgeInsets.symmetric(
-                      vertical: 10.h,
+                      vertical: 15.h,
                       horizontal: 20.w,
                     ),
                   ),
                   value: selectedValue,
-                  items: items.map((String value) {
+                  items: companyList.map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
                     );
+                    // print();
                   }).toList(),
                   onChanged: (String? value) {
                     setState(() {
                       selectedValue = value;
+                      print("this is selected ${selectedValue}");
                     });
                   },
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 fieldTile("Employee ID"),
                 customField("Enter your Employee ID", employeeIdController, false),
                 SizedBox(height: 30.h),
                 GestureDetector(
-                  onTap: () {
-                    // Perform signup logic here
-                    String employeeId = employeeIdController.text;
-                    String company = selectedValue ?? "";
-                    // Call API or handle signup process
-                  },
+                  onTap: _verifyEmployee,
                   child: Container(
-                    height: 60,
+                    height: 50,
                     width: MediaQuery.of(context).size.width,
-                    margin: EdgeInsets.only(
-                        top: MediaQuery.of(context).size.height / 40),
-                    decoration: BoxDecoration(
+                    margin: EdgeInsets.only(top: MediaQuery.of(context).size.height / 40),
+                    decoration: const BoxDecoration(
                       color: Colors.redAccent,
                       borderRadius: BorderRadius.all(Radius.circular(32)),
                     ),
                     child: Center(
                       child: Text(
-                        "SIGN UP",
+                        "SIGNUP",
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: MediaQuery.of(context).size.width / 26,
@@ -135,16 +215,15 @@ class _SignupScreenState extends State<SignupScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize:  20,
+        style: const TextStyle(
+          fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget customField(
-      String hint, TextEditingController controller, bool obscure) {
+  Widget customField(String hint, TextEditingController controller, bool obscure) {
     return Container(
       width: MediaQuery.of(context).size.width,
       margin: const EdgeInsets.only(bottom: 12),
@@ -171,8 +250,7 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(
-                  right: MediaQuery.of(context).size.width / 15),
+              padding: EdgeInsets.only(right: MediaQuery.of(context).size.width / 15),
               child: TextFormField(
                 controller: controller,
                 enableSuggestions: false,

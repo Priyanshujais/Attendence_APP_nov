@@ -1,10 +1,16 @@
+import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Login_pages/forgetpass_screen/forget_password.dart';
 import '../Login_pages/signup_screen/sign_up_page.dart';
-import '../home_page/Home_screen.dart';
+import '../home_page/HomeScreen.dart';
+import 'models/login_model.dart';
 
+bool isManager = false;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -16,200 +22,247 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   TextEditingController idController = TextEditingController();
   TextEditingController passController = TextEditingController();
-  bool _obscureText = true; // Add this line to declare _obscureText
+  bool _obscureText = true;
   double screenHeight = 0.h;
   double screenWidth = 0.w;
   Color primary = Colors.redAccent;
+  var _permissions;
 
-  void _mockLogin() {
-    String email = idController.text;
+  Future<void> _login() async {
+    String emp_code = idController.text;
     String password = passController.text;
 
-    // Mock login logic: Replace this with actual API call in the future
-    if (email == '12345' && password == '1234') {
-      // Simulate a successful login
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(),
-        ),
-      );
-    } else {
-      // Simulate a login failure
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Authentication Failed'),
-            content: Text('Invalid email or password. Please try again.'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('OK'),
-              ),
-            ],
+    var url = Uri.parse('http://35.154.148.75/zarvis/api/v2/login');
+    var response = await http.post(url,
+        body: jsonEncode({
+          'emp_code': emp_code,
+          'password': password,
+        }),
+        headers: {'Content-Type': 'application/json'});
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> responsedata = jsonDecode(response.body);
+
+      log(responsedata.toString());
+      LoginModel loginModel = LoginModel.fromJson(responsedata);
+      if (loginModel.status == '1') {
+        String? token = responsedata['result']['token'];
+        String? emp_nqme =
+            responsedata['result']['employeedetails']['first_name'];
+
+        log("Token----$token");
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString("token", token!);
+        await prefs.setString("emp_name", emp_nqme!);
+
+        log('Login successful, navigating to home screen');
+
+        // List permissions = responsedata['result']['permissions'];
+
+         print(responsedata['result']['permissions']);
+        if (responsedata['result']['permissions'] == "") {
+          isManager = true;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const Homescreen(),
+            ),
           );
-        },
-      );
+        } else {
+          isManager = false;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const Homescreen(),
+            ),
+          );
+        }
+        // if (!mounted) return;
+        // Navigator.pushReplacement(
+        //   context,
+        //   MaterialPageRoute(
+        //     builder: (context) => const Homescreen(),
+        //   ),
+        // );
+      } else {
+        log('Login failed: ${loginModel.message}');
+        _showErrorDialog(loginModel.message ?? 'Login failed');
+      }
+    } else {
+      _showErrorDialog('Server error: ${response.statusCode}');
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Authentication Failed'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> storeToken(String token) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isKeyboardVisible =
-    KeyboardVisibilityProvider.isKeyboardVisible(context);
+     bool isKeyboardVisible =
+        KeyboardVisibilityProvider.isKeyboardVisible(context);
     screenHeight = MediaQuery.of(context).size.height;
     screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          isKeyboardVisible
-              ? SizedBox(
-            height: screenHeight/100.h,
-          )
-              : Container(
-            height: screenHeight/2.7.h,
-            width: screenWidth/2.0.w,
-            decoration: BoxDecoration(
-              //color: primary,
-              borderRadius: const BorderRadius.only(
-                bottomRight: Radius.circular(80),
+      resizeToAvoidBottomInset: true,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+           if (!isKeyboardVisible)
+              SizedBox(height: isKeyboardVisible ? 110 : 20
+              ),
+            Container(
+              height: screenHeight / 3,
+              width: screenWidth,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/zarvis.png',
+                  width: screenWidth / 1.5,
+                  height: screenHeight / 3,
+                ),
               ),
             ),
-            child: Center(
-              child: Image.asset('assets/images/zarvis.png'
-                ,
-                width: screenHeight / 3,
-                height: screenWidth/0,
-                //color: Colors.white,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.only(
-              top: screenWidth / 25,
-              bottom: screenHeight / 20,
-            ),
-            child: Text(
+            Text(
               "Login",
               style: TextStyle(
-                fontSize: screenWidth / 16,
+                fontSize: 24.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
-          ),
-          Container(
-            alignment: Alignment.centerLeft,
-            margin: EdgeInsets.symmetric(horizontal: screenWidth / 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                fieldTile("Employee ID"),
-                customField("Enter your Employee id", idController, false),
-                fieldTile("Password"),
-                customField("Enter your Password", passController, true),
-                GestureDetector(
-                  onTap: _mockLogin,
-                  child: Container(
-                    height: 60,
-                    width: screenWidth,
-                    margin: EdgeInsets.only(top: screenHeight / 40),
-                    decoration: BoxDecoration(
-                      color: primary,
-                      borderRadius: const BorderRadius.all(Radius.circular(32)),
-                    ),
-                    child: Center(
-                      child: Text(
-                        "LOGIN",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: screenWidth / 26.sp,
-                          color: Colors.white,
-                          letterSpacing: 1,
+            SizedBox(height: screenHeight / 30),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 32.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  fieldTile("Employee ID"),
+                  customField("Enter your Employee id", idController, false),
+                  fieldTile("Password"),
+                  customField("Enter your Password", passController, true),
+                  SizedBox(height: screenHeight / 50),
+                  GestureDetector(
+                    onTap: _login,
+                    child: Container(
+                      height: 40.h,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: primary,
+                        borderRadius: BorderRadius.all(Radius.circular(32.r)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "LOGIN",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18.sp,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(height: 30.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ForgetPass(),
+                  SizedBox(height: 20.h),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgetPass(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Forgot Password?',
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            color: primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      },
-                      child: Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          color: primary,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    SizedBox(width: 70.w),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SignupScreen(),
+                      SizedBox(width: 90.w),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SignupScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            fontSize: 15.sp,
+                            color: primary,
+                            fontWeight: FontWeight.bold,
                           ),
-                        );
-                      },
-                      child: Text(
-                        'Sign Up',
-                        style: TextStyle(
-                          fontSize: 18.sp,
-                          color: primary,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget fieldTile(String title) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 8.h),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: screenWidth / 20,
+          fontSize: 16.sp,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget customField(String hint, TextEditingController controller, bool obscure) {
+  Widget customField(
+      String hint, TextEditingController controller, bool obscure) {
     return Container(
-      width: screenWidth,
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: const BoxDecoration(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: 16.h),
+      decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.all(Radius.circular(12)),
+        borderRadius: BorderRadius.all(Radius.circular(12.r)),
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
-            blurRadius: 10,
+            blurRadius: 10.r,
             offset: Offset(2, 2),
           ),
         ],
@@ -217,41 +270,41 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Row(
         children: [
           Container(
-            width: screenWidth / 6,
+            width: 50.w,
             child: Icon(
-              hint == 'Password' ? Icons.lock : Icons.person,
+              hint == 'Enter your Password' ? Icons.lock : Icons.person,
               color: primary,
-              size: screenWidth / 15,
+              size: 24.sp,
             ),
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(right: screenWidth / 15),
+              padding: EdgeInsets.only(right: 16.w),
               child: TextFormField(
                 controller: controller,
                 enableSuggestions: false,
                 autocorrect: false,
                 decoration: InputDecoration(
                   contentPadding: EdgeInsets.symmetric(
-                    vertical: screenHeight / 35,
+                    vertical: 16.h,
                   ),
                   border: InputBorder.none,
                   hintText: hint,
                 ),
                 maxLines: 1,
-                obscureText: obscure,
+                obscureText: obscure && _obscureText,
               ),
             ),
           ),
-          if (hint == 'Password') // Show password visibility toggle icon only for the password field
+          if (hint == 'Enter your Password')
             IconButton(
               icon: Icon(
-                obscure ? Icons.visibility_off : Icons.visibility, // Change the icon based on the current state of obscure
+                _obscureText ? Icons.visibility_off : Icons.visibility,
                 color: primary,
               ),
               onPressed: () {
                 setState(() {
-                  obscure = !obscure; // Update the state of obscure
+                  _obscureText = !_obscureText;
                 });
               },
             ),
@@ -259,8 +312,4 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-
-
-
-
 }

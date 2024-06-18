@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'package:zarvis_app/pages/home_page/splash_screen.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+
+
 void main() {
   runApp(const pages());
 }
@@ -28,7 +31,7 @@ class pages extends StatelessWidget {
           ),
         );
       },
-      child: const SplashScreen(),
+      child:   SplashScreen(),
     );
   }
 }

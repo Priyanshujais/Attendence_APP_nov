@@ -13,8 +13,19 @@ class _State extends State<LeaveStatus> {
     return Scaffold(
     appBar: AppBar(
     title:Text("Leave Status",style: TextStyle(color: Colors.white),) ,
-backgroundColor: Colors.pink.shade800,
+backgroundColor: Colors.red,
     ),
+      body: Center(
+        child: Positioned.fill(
+          child: Opacity(
+            opacity: 0.2, // Adjust the opacity as needed
+            child: Image.asset(
+              "assets/images/zarvis.png",
+              // fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

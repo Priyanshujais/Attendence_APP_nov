@@ -15,41 +15,43 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(Duration(seconds: 2), () {
+    Timer(const Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      // Set background color to transparent
-      body: Stack(
-        children: [
-          // Background image
-          Image.asset(
-            'assets/images/background.jpeg',
-            // Replace with your background image path
-            fit: BoxFit.cover,
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-          ),
-          // Overlay image
-          Positioned.fill(
-            child: Center(
-              child: Image.asset(
-                'assets/images/zarvis.png',
-                // Replace with your overlay image path
-                width: 200.w, // Adjust the width as needed
-                height: 200.h, // Adjust the height as needed
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        // Set background color to transparent
+        body: Stack(
+          children: [
+            // Background image
+            Image.asset(
+              'assets/images/background.jpeg',
+              // Replace with your background image path
+              fit: BoxFit.cover,
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+            ),
+            // Overlay image
+            Positioned.fill(
+              child: Center(
+                child: Image.asset(
+                  'assets/images/zarvis.png',
+                  // Replace with your overlay image path
+                  width: 200.w, // Adjust the width as needed
+                  height: 200.h, // Adjust the height as needed
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
