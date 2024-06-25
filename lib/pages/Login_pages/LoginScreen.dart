@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   double screenHeight = 0.h;
   double screenWidth = 0.w;
   Color primary = Colors.redAccent;
-  var _permissions;
+
 
   Future<void> _login() async {
     String emp_code = idController.text;
@@ -46,27 +46,45 @@ class _LoginScreenState extends State<LoginScreen> {
       log(responsedata.toString());
       LoginModel loginModel = LoginModel.fromJson(responsedata);
       if (loginModel.status == '1') {
-        String? token = responsedata['result']['token'];
-        String? emp_nqme =
-            responsedata['result']['employeedetails']['first_name'];
+        String? tokenn = responsedata['result']['token'];
+        String? emp_nqme = responsedata['result']['employeedetails']['first_name'];
+        String? companyId = responsedata['result']['employeedetails']['company_id'];
+        String? empCode = responsedata['result']['employeedetails']['emp_code'];
+        String? clientId = responsedata['result']['employeedetails']['client_id'];
+        String? projectId = responsedata['result']['employeedetails']['project_id'];
+        String? locationId = responsedata['result']['employeedetails']['location_id'];
+        String? UserId = responsedata['result']['employeedetails']['user_id'];
 
-        log("Token----$token");
+        log("Token----$tokenn");
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString("token", token!);
+        await prefs.setString("token", tokenn!);
         await prefs.setString("emp_name", emp_nqme!);
+        print('this is com_id $companyId');
+        await prefs.setString("company_id", companyId.toString());
+        print('this is employee code $empCode');
+        await prefs.setString("emp_code", empCode!);
+
 
         log('Login successful, navigating to home screen');
 
         // List permissions = responsedata['result']['permissions'];
+        List<dynamic> permissions = responsedata['result']['permissions'];
 
-         print(responsedata['result']['permissions']);
-        if (responsedata['result']['permissions'] == "") {
+        if (permissions.length > 1) {
           isManager = true;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const Homescreen(),
+              builder: (context) =>   Homescreen(deviceId: "cb7d119b9e3c8acb",
+                token: tokenn,
+                companyId: companyId.toString(),
+                empCode: emp_code.toString(),
+                userId: UserId.toString(),
+                clientId:clientId.toString() ,
+                projectCode: projectId.toString(),
+                locationId: locationId.toString(),
+              ),
             ),
           );
         } else {
@@ -74,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const Homescreen(),
+              builder: (context) =>   Homescreen(token: tokenn, companyId: companyId.toString(), empCode: emp_code, userId: UserId.toString(), clientId:clientId.toString() , projectCode: projectId.toString(),  locationId: locationId.toString(),deviceId: "cb7d119b9e3c8acb",),
             ),
           );
         }
@@ -263,7 +281,7 @@ class _LoginScreenState extends State<LoginScreen> {
           BoxShadow(
             color: Colors.black26,
             blurRadius: 10.r,
-            offset: Offset(2, 2),
+            offset: const Offset(2, 2),
           ),
         ],
       ),

@@ -6,7 +6,15 @@ import 'package:zarvis_app/pages/home_page/DashbordScreen.dart';
 import 'package:zarvis_app/pages/home_page/TodayScreen.dart';
 
 class Homescreen extends StatefulWidget {
-  const Homescreen({super.key});
+  String deviceId;
+  String empCode  ;
+  String userId  ;
+  String clientId  ;
+  String projectCode  ;
+  String locationId  ;
+  String companyId ;
+  String token;
+    Homescreen({super.key, required this.token,required this.locationId, required this.userId, required this.projectCode, required this.deviceId, required this.clientId, required this.companyId, required this.empCode});
 
   @override
   State<Homescreen> createState() => _HomescreenState();
@@ -31,9 +39,12 @@ class _HomescreenState extends State<Homescreen> {
     return Scaffold(
       body: IndexedStack(
         index: currentIndex,
-        children: const [
+        children:   [
           Calenderscreen(),
-          Todayscreen(),
+          Todayscreen(
+            token:  widget.token,
+
+          ),
           Dashbordscreen(),
         ],
       ),

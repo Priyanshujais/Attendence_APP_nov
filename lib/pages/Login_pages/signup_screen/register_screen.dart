@@ -119,8 +119,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Uri.parse('http://35.154.148.75/zarvis/api/v2/register'),
         body: json.encode({
           'emp_code': employeeId,
-          'device_id': "12345",
-          'emp_id': '4425',
+          'device_id': 'device_id',
+          'emp_id': 'emp_id',
           'shift_code': shift,
           'first_name': fullName.split(' ')[0],
         }),
