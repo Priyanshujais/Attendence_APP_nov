@@ -84,7 +84,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: Size(360, 690), minTextAdapt: true);
 
-    return SafeArea(top: false
+    return SafeArea(top: true
       ,
       child: Scaffold(
         appBar: AppBar(

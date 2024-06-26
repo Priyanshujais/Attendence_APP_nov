@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:developer';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../Login_pages/forgetpass_screen/forget_password.dart';
 import '../Login_pages/signup_screen/sign_up_page.dart';
 import '../home_page/HomeScreen.dart';
@@ -27,7 +29,6 @@ class _LoginScreenState extends State<LoginScreen> {
   double screenWidth = 0.w;
   Color primary = Colors.redAccent;
 
-
   Future<void> _login() async {
     String emp_code = idController.text;
     String password = passController.text;
@@ -47,13 +48,17 @@ class _LoginScreenState extends State<LoginScreen> {
       LoginModel loginModel = LoginModel.fromJson(responsedata);
       if (loginModel.status == '1') {
         String? tokenn = responsedata['result']['token'];
-        String? emp_nqme = responsedata['result']['employeedetails']['first_name'];
-        String? companyId = responsedata['result']['employeedetails']['company_id'];
+        String? emp_nqme =
+        responsedata['result']['employeedetails']['first_name'];
+        int? companyId =
+        responsedata['result']['employeedetails']['company_id'];
         String? empCode = responsedata['result']['employeedetails']['emp_code'];
-        String? clientId = responsedata['result']['employeedetails']['client_id'];
-        String? projectId = responsedata['result']['employeedetails']['project_id'];
-        String? locationId = responsedata['result']['employeedetails']['location_id'];
-        String? UserId = responsedata['result']['employeedetails']['user_id'];
+        int? clientId = responsedata['result']['employeedetails']['client_id'];
+        int? projectId =
+        responsedata['result']['employeedetails']['project_id'];
+        int? locationId =
+        responsedata['result']['employeedetails']['location_id'];
+        int? UserId = responsedata['result']['employeedetails']['user_id'];
 
         log("Token----$tokenn");
 
@@ -65,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen> {
         print('this is employee code $empCode');
         await prefs.setString("emp_code", empCode!);
 
-
         log('Login successful, navigating to home screen');
 
         // List permissions = responsedata['result']['permissions'];
@@ -76,12 +80,13 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) =>   Homescreen(deviceId: "cb7d119b9e3c8acb",
+              builder: (context) => Homescreen(
+                deviceId: "cb7d119b9e3c8acb",
                 token: tokenn,
                 companyId: companyId.toString(),
                 empCode: emp_code.toString(),
                 userId: UserId.toString(),
-                clientId:clientId.toString() ,
+                clientId: clientId.toString(),
                 projectCode: projectId.toString(),
                 locationId: locationId.toString(),
               ),
@@ -92,7 +97,16 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) =>   Homescreen(token: tokenn, companyId: companyId.toString(), empCode: emp_code, userId: UserId.toString(), clientId:clientId.toString() , projectCode: projectId.toString(),  locationId: locationId.toString(),deviceId: "cb7d119b9e3c8acb",),
+              builder: (context) => Homescreen(
+                token: tokenn,
+                companyId: companyId.toString(),
+                empCode: emp_code,
+                userId: UserId.toString(),
+                clientId: clientId.toString(),
+                projectCode: projectId.toString(),
+                locationId: locationId.toString(),
+                deviceId: "cb7d119b9e3c8acb",
+              ),
             ),
           );
         }
@@ -139,8 +153,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-     bool isKeyboardVisible =
-        KeyboardVisibilityProvider.isKeyboardVisible(context);
+    bool isKeyboardVisible =
+    KeyboardVisibilityProvider.isKeyboardVisible(context);
     screenHeight = MediaQuery.of(context).size.height;
     screenWidth = MediaQuery.of(context).size.width;
 
@@ -149,9 +163,8 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-           if (!isKeyboardVisible)
-              SizedBox(height: isKeyboardVisible ? 110 : 20
-              ),
+            if (!isKeyboardVisible)
+              SizedBox(height: isKeyboardVisible ? 110 : 20),
             Container(
               height: screenHeight / 3,
               width: screenWidth,

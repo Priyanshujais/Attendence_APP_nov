@@ -21,7 +21,8 @@ Map<String, dynamic> data = {
     "Report",
 
   ],
-  "goto": [const Profile_Screen(), const CalendarScreen(),const  ApplyLeave(),const LeaveStatus(), const ChangePassword(),const  ReportScreen(),const Teamattendance(),Managerleaveapporval()]
+  "goto": [const Profile_Screen(), const CalendarScreen(),const  ApplyLeave(),const LeaveStatus(), const ChangePassword(),const  ReportScreen(),const Teamattendance(),ManagerLeaveApproval(
+     )]
 };
 
 

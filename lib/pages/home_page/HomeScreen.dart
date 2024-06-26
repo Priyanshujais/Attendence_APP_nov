@@ -7,14 +7,23 @@ import 'package:zarvis_app/pages/home_page/TodayScreen.dart';
 
 class Homescreen extends StatefulWidget {
   String deviceId;
-  String empCode  ;
-  String userId  ;
-  String clientId  ;
-  String projectCode  ;
-  String locationId  ;
-  String companyId ;
+  String empCode;
+  String userId;
+  String clientId;
+  String projectCode;
+  String locationId;
+  String companyId;
   String token;
-    Homescreen({super.key, required this.token,required this.locationId, required this.userId, required this.projectCode, required this.deviceId, required this.clientId, required this.companyId, required this.empCode});
+  Homescreen(
+      {super.key,
+        required this.token,
+        required this.locationId,
+        required this.userId,
+        required this.projectCode,
+        required this.deviceId,
+        required this.clientId,
+        required this.companyId,
+        required this.empCode});
 
   @override
   State<Homescreen> createState() => _HomescreenState();
@@ -32,20 +41,27 @@ class _HomescreenState extends State<Homescreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool isKeyboardVisible = KeyboardVisibilityProvider.isKeyboardVisible(context);
+    bool isKeyboardVisible =
+    KeyboardVisibilityProvider.isKeyboardVisible(context);
     screenHeight = MediaQuery.of(context).size.height;
     screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       body: IndexedStack(
         index: currentIndex,
-        children:   [
+        children: [
           Calenderscreen(),
           Todayscreen(
-            token:  widget.token,
-
+            token: widget.token,
+            clientId: widget.clientId,
+            companyId: widget.companyId,
+            userId: widget.userId,
+            deviceId: widget.deviceId,
+            empCode: widget.empCode,
+            locationId: widget.locationId,
+            projectCode: widget.projectCode,
           ),
-          Dashbordscreen(),
+          Dashbordscreen( token: widget.token,empCode: widget.empCode,companyId: widget.companyId,),
         ],
       ),
       bottomNavigationBar: Container(
@@ -59,7 +75,8 @@ class _HomescreenState extends State<Homescreen> {
             color: Colors.white,
             borderRadius: BorderRadius.all(Radius.circular(40)),
             boxShadow: [
-              BoxShadow(color: Colors.black, blurRadius: 10, offset: Offset(2, 2))
+              BoxShadow(
+                  color: Colors.black, blurRadius: 10, offset: Offset(2, 2))
             ]),
         child: ClipRRect(
           borderRadius: const BorderRadius.all(Radius.circular(40)),
@@ -85,7 +102,8 @@ class _HomescreenState extends State<Homescreen> {
                           children: [
                             Icon(
                               navigationIcon[i],
-                              color: i == currentIndex ? Colors.red : Colors.grey,
+                              color:
+                              i == currentIndex ? Colors.red : Colors.grey,
                               size: i == currentIndex ? 40 : 25,
                             ),
                             i == currentIndex
@@ -94,7 +112,8 @@ class _HomescreenState extends State<Homescreen> {
                               height: 3,
                               width: 22,
                               decoration: const BoxDecoration(
-                                borderRadius: BorderRadius.all(Radius.circular(40)),
+                                borderRadius:
+                                BorderRadius.all(Radius.circular(40)),
                                 color: Colors.white10,
                               ),
                             )

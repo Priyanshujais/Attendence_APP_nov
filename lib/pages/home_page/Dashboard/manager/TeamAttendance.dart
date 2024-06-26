@@ -66,8 +66,7 @@ class _TeamattendanceState extends State<Teamattendance> {
               clients = List<Map<String, dynamic>>.from(jsonResponse['dataset']);
               clientResponse = jsonResponse.toString();
             });
-          }
-          else {
+          } else {
             setState(() {
               errorMessage = jsonResponse['message'] ?? 'Invalid response format or status not 1';
             });
@@ -88,8 +87,6 @@ class _TeamattendanceState extends State<Teamattendance> {
     } catch (e) {
       setState(() {
         errorMessage = 'Error fetching clients: $e';
-        throw Exception('Error fetching clients: $e');
-        // Get.snackbar("Error fetching clients", "$e");
       });
       print('Error fetching clients: $e');
     }
@@ -109,32 +106,33 @@ class _TeamattendanceState extends State<Teamattendance> {
             'emp_code': empCode,
           }),
         );
+
         print("this is client id $clientId");
 
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           print('Project list response: $jsonResponse');
 
-          if (jsonResponse['status'] == '1' ||  jsonResponse['dataset'] != null ||
-              jsonResponse['dataset'] is List
-
-          ) {
+          if (jsonResponse['status'] == '1' ||
+              jsonResponse['dataset'] != null ||
+              jsonResponse['dataset'] is List) {
             setState(() {
               projects = List<Map<String, dynamic>>.from(jsonResponse['dataset']);
               projectResponse = jsonResponse.toString();
             });
-          }
-          else if(jsonResponse['status'] == '0'){
+          } else if (jsonResponse['status'] == '0') {
             String message = jsonResponse['message'];
             setState(() {
               errorMessage = jsonResponse['message'] ?? 'You are not associated with this client, kindly select relevant Client ! !';
-              Get.snackbar("Warning !", message,
+              Get.snackbar(
+                "Warning !",
+                message,
                 backgroundColor: Colors.red,
-                colorText: Colors.white,);
+                colorText: Colors.white,
+              );
               throw Exception(" status 0  Error fetching clients + You are not associated with this client, kindly select relevant Client !");
             });
-          }
-          else {
+          } else {
             setState(() {
               errorMessage = jsonResponse['message'] ?? 'Invalid response format or status not 1';
             });
@@ -154,7 +152,6 @@ class _TeamattendanceState extends State<Teamattendance> {
       }
     } catch (e) {
       setState(() {
-
         errorMessage = 'Error fetching projects: $e';
       });
       print('Error fetching projects: $e');
@@ -178,6 +175,7 @@ class _TeamattendanceState extends State<Teamattendance> {
 
         print("this is project id $projectId");
         print("this is emp code $empCode");
+
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           print('Location list response: $jsonResponse');
@@ -306,11 +304,13 @@ class _TeamattendanceState extends State<Teamattendance> {
                         SizedBox(height: 20.0),
                         Center(
                           child: Container(
-                            width: double.infinity, // Full width
+                            width: MediaQuery.of(context).size.width * 0.8, // Adjust button width
                             padding: EdgeInsets.symmetric(vertical: 10.0),
                             child: ElevatedButton(
                               onPressed: () {
-                                if (selectedLocation != null && selectedClient != null && selectedProject != null) {
+                                if (selectedLocation != null &&
+                                    selectedClient != null &&
+                                    selectedProject != null) {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -326,6 +326,7 @@ class _TeamattendanceState extends State<Teamattendance> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 15.0), // Adjust button padding
                                 backgroundColor: Colors.red,
                                 elevation: 1, // No shadow
                                 shape: RoundedRectangleBorder(

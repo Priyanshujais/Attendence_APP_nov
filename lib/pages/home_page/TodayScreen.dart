@@ -1,27 +1,35 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:slide_to_act/slide_to_act.dart';
-import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slide_to_act/slide_to_act.dart';
 
 class Todayscreen extends StatefulWidget {
-    String? deviceId;
-    String? empCode  ;
-    String? userId  ;
-    String? clientId  ;
-    String? projectCode  ;
-    String? locationId  ;
-    String? companyId ;
-    String? token;
-    Todayscreen({this.token,     this.empCode,     this.companyId,    this .clientId,    this.deviceId,    this.locationId,    this.projectCode,    this.userId});
+  String? deviceId;
+  String? empCode;
+  String? userId;
+  String? clientId;
+  String? projectCode;
+  String? locationId;
+  String? companyId;
+  String? token;
+  Todayscreen(
+      {this.token,
+        this.empCode,
+        this.companyId,
+        this.clientId,
+        this.deviceId,
+        this.locationId,
+        this.projectCode,
+        this.userId});
 
   @override
   State<Todayscreen> createState() => _TodayscreenState();
@@ -33,7 +41,7 @@ class _TodayscreenState extends State<Todayscreen> {
   String employeeName = "Employee";
   String checkInTime = "--/--";
   String checkOutTime = "--/--";
-  String reason="";
+  String reason = "";
   String checkInLocation = "--";
   String checkOutLocation = "--";
   String workingLocation = "--";
@@ -47,13 +55,12 @@ class _TodayscreenState extends State<Todayscreen> {
   String totalHoursWorked = "00:00:00";
   String emp_name = "";
 
-
-
   // Define your office location coordinates
-  final double officeLatitude = 28.607440000000004; // Replace with your office latitude
-  final double officeLongitude = 77.3807874269844; // Replace with your office longitude
+  final double officeLatitude =
+  28.607440000000004; // Replace with your office latitude
+  final double officeLongitude =
+  77.3807874269844; // Replace with your office longitude
   final double officeRadius = 10; // Radius in meters for office proximity check
-
 
   @override
   void initState() {
@@ -77,8 +84,9 @@ class _TodayscreenState extends State<Todayscreen> {
     timer?.cancel();
     super.dispose();
   }
+
   ///getuser name
-  getUSerName() async{
+  getUSerName() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     emp_name = prefs.getString('emp_name')!;
     setState(() {
@@ -91,10 +99,12 @@ class _TodayscreenState extends State<Todayscreen> {
 
     if (locationPermissionStatus.isGranted) {
       Position position = await fetchUserLocation();
-      bool isAtOffice = isLocationAtOffice(position.latitude, position.longitude);
+      bool isAtOffice =
+      isLocationAtOffice(position.latitude, position.longitude);
 
       // Fetch the initial address using reverse geocoding
-      String initialAddress = await fetchLocationDetails(position.latitude, position.longitude);
+      String initialAddress =
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       showDialog(
         context: context,
@@ -114,13 +124,15 @@ class _TodayscreenState extends State<Todayscreen> {
                       children: [
                         GoogleMap(
                           initialCameraPosition: CameraPosition(
-                            target: LatLng(position.latitude, position.longitude),
+                            target:
+                            LatLng(position.latitude, position.longitude),
                             zoom: 16,
                           ),
                           markers: {
                             Marker(
                               markerId: const MarkerId('location'),
-                              position: LatLng(position.latitude, position.longitude),
+                              position:
+                              LatLng(position.latitude, position.longitude),
                             ),
                           },
                         ),
@@ -179,17 +191,19 @@ class _TodayscreenState extends State<Todayscreen> {
             actions: <Widget>[
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(false); // Close the dialog with cancel result
+                  Navigator.of(context)
+                      .pop(false); // Close the dialog with cancel result
                 },
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () async {
                   String reason = reasonController.text.trim();
-                  Navigator.of(context).pop(true); // Close the dialog with confirm result
+                  Navigator.of(context)
+                      .pop(true); // Close the dialog with confirm result
 
                   if (isCheckingIn) {
-                    await handleCheckIn(position,reason);
+                    await handleCheckIn(position, reason);
                   } else {
                     await handleCheckOut(position, reason);
                   }
@@ -207,8 +221,6 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-
-
   Future<void> handleCheckIn(Position position, String reason) async {
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -216,11 +228,12 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       String checkInTimeString = DateFormat('hh:mm a').format(now);
       String checkInDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkInLocationString = await fetchLocationDetails(position.latitude, position.longitude);
+      String checkInLocationString =
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       // API body
       final checkInBody = {
-        "device_id":widget.deviceId,
+        "device_id": widget.deviceId,
         "emp_code": widget.empCode,
         "user_id": widget.userId,
         "client_id": widget.clientId,
@@ -231,17 +244,19 @@ class _TodayscreenState extends State<Todayscreen> {
         "punch_in_long": position.longitude.toString(),
         "punch_in_address": checkInLocationString,
         "punch_in_remark": "reason",
-        "working_location":"In Office" ,
+        "working_location": "In Office",
         "punch_in_date_time": checkInDate,
         "attendancedate": checkInDate,
         "attendance_manager_remark": "I am In",
-        "in_geofence":  "yes"
-    ///isLocationAtOffice(position.latitude, position.longitude) ? : "no"
+        "in_geofence": "yes"
       };
 
       final response = await http.post(
         Uri.parse('http://35.154.148.75/zarvis/api/v2/empSignIn'),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${widget.token}',
+        },
         body: jsonEncode(checkInBody),
       );
 
@@ -253,7 +268,10 @@ class _TodayscreenState extends State<Todayscreen> {
             checkInLocation = checkInLocationString;
             isCheckedIn = true;
             sliderText = "Slide to Check Out";
-            workingLocation = isLocationAtOffice(position.latitude, position.longitude) ? "In Office" : "Outside of Office";
+            workingLocation =
+            isLocationAtOffice(position.latitude, position.longitude)
+                ? "In Office"
+                : "Outside of Office";
           });
 
           await prefs.setString('checkInTime', checkInTimeString);
@@ -276,9 +294,6 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-
-
-
   bool isDayCompleted = false;
   Future<void> handleCheckOut(Position position, String reason) async {
     final now = DateTime.now();
@@ -287,10 +302,12 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       String checkOutTimeString = DateFormat('hh:mm a').format(now);
       String checkOutDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkOutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
+      String checkOutLocationString =
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       // Calculate duration between check-in and check-out
-      DateTime lastCheckedDate = DateTime.parse(prefs.getString('lastCheckedDate') ?? now.toString());
+      DateTime lastCheckedDate =
+      DateTime.parse(prefs.getString('lastCheckedDate') ?? now.toString());
       Duration duration = now.difference(lastCheckedDate);
       String totalDuration = formatDuration(duration);
 
@@ -304,15 +321,23 @@ class _TodayscreenState extends State<Todayscreen> {
         "company_id": widget.companyId,
         "punch_out_lat": position.latitude.toString(),
         "punch_out_long": position.longitude.toString(),
-        "working_location": isLocationAtOffice(position.latitude, position.longitude) ? "In Office" : "Outside of Office",
+        "working_location":
+        isLocationAtOffice(position.latitude, position.longitude)
+            ? "In Office"
+            : "Outside of Office",
         "punch_out_date_time": checkOutDate,
         "attendancedate": checkOutDate,
-        "in_geofence": isLocationAtOffice(position.latitude, position.longitude) ? "yes" : "no"
+        "in_geofence": isLocationAtOffice(position.latitude, position.longitude)
+            ? "yes"
+            : "no"
       };
 
       final response = await http.post(
         Uri.parse('http://35.154.148.75/zarvis/api/v2/empSignOut'),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${widget.token}',
+        },
         body: jsonEncode(checkOutBody),
       );
 
@@ -325,7 +350,10 @@ class _TodayscreenState extends State<Todayscreen> {
             isCheckedIn = false;
             sliderText = "Slide to Check In";
             totalHoursWorked = totalDuration;
-            workingLocation = isLocationAtOffice(position.latitude, position.longitude) ? "In Office" : "Outside of Office";
+            workingLocation =
+            isLocationAtOffice(position.latitude, position.longitude)
+                ? "In Office"
+                : "Outside of Office";
           });
 
           await prefs.setString('checkOutTime', checkOutTimeString);
@@ -355,7 +383,7 @@ class _TodayscreenState extends State<Todayscreen> {
   Future<String> fetchLocationDetails(double latitude, double longitude) async {
     try {
       List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude);
+      await placemarkFromCoordinates(latitude, longitude);
       Placemark placemark = placemarks.first;
       print("${placemark.subLocality}, ${placemark.locality}");
       return "${placemark.subLocality}, ${placemark.locality}";
@@ -363,6 +391,7 @@ class _TodayscreenState extends State<Todayscreen> {
       throw Exception('Error fetching location details');
     }
   }
+
   bool isLocationAtOffice(double latitude, double longitude) {
     double distanceInMeters = Geolocator.distanceBetween(
       officeLatitude,
@@ -398,8 +427,10 @@ class _TodayscreenState extends State<Todayscreen> {
       checkInLocation = prefs.getString('checkInLocation') ?? "--";
       checkOutLocation = prefs.getString('checkOutLocation') ?? "--";
       totalHoursWorked = prefs.getString('totalHoursWorked') ?? "00:00:00";
-      checkInWorkingLocation = prefs.getString('checkInWorkingLocation') ?? "--";
-      checkOutWorkingLocation = prefs.getString('checkOutWorkingLocation') ?? "--";
+      checkInWorkingLocation =
+          prefs.getString('checkInWorkingLocation') ?? "--";
+      checkOutWorkingLocation =
+          prefs.getString('checkOutWorkingLocation') ?? "--";
       isCheckedIn = prefs.getBool('isCheckedIn') ?? false;
       sliderText = isCheckedIn ? "Slide to Check Out" : "Slide to Check In";
     });
@@ -421,12 +452,12 @@ class _TodayscreenState extends State<Todayscreen> {
       child: Scaffold(
         body: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0.h), // Add padding here
+            padding: EdgeInsets.symmetric(horizontal: 16.0.h),
             child: Column(
               children: [
                 Container(
                   alignment: Alignment.centerLeft,
-                  margin: const EdgeInsets.only(top: 1,bottom: 0),
+                  margin: const EdgeInsets.only(top: 1, bottom: 0),
                   child: Text(
                     "Welcome, ",
                     style: TextStyle(
@@ -441,7 +472,7 @@ class _TodayscreenState extends State<Todayscreen> {
                     "$emp_name",
                     style: TextStyle(
                       color: Colors.red,
-                      fontSize: screenHeight/18.h,
+                      fontSize: screenHeight / 18.h,
                     ),
                   ),
                 ),
@@ -576,7 +607,9 @@ class _TodayscreenState extends State<Todayscreen> {
                     "Working Location: $workingLocation",
                     style: TextStyle(
                       fontSize: screenWidth / 18.sp,
-                      color: workingLocation == "In Office" ? Colors.green : Colors.red,
+                      color: workingLocation == "In Office"
+                          ? Colors.green
+                          : Colors.red,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -591,9 +624,11 @@ class _TodayscreenState extends State<Todayscreen> {
                     textColor: Colors.black54,
                     onSubmit: () {
                       if (isCheckedIn) {
-                        showLocationDialog(false); // Show location dialog for check-out
+                        showLocationDialog(
+                            false); // Show location dialog for check-out
                       } else {
-                        showLocationDialog(true); // Show location dialog for check-in
+                        showLocationDialog(
+                            true); // Show location dialog for check-in
                       }
                     },
                     height: 60.h,
@@ -618,7 +653,6 @@ class _TodayscreenState extends State<Todayscreen> {
       ),
     );
   }
-
 }
 
 class MapDialog extends StatelessWidget {

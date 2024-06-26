@@ -18,7 +18,16 @@ import 'Dashboard/manager/TeamReport.dart';
 import 'Dashboard/profile_screen.dart';
 
 class Dashbordscreen extends StatefulWidget {
-  const Dashbordscreen({super.key});
+String empCode;
+
+String companyId;
+String token;
+   Dashbordscreen({
+     super.key,
+      required this.token,
+
+     required this.companyId,
+     required this.empCode});
 
   @override
   State<Dashbordscreen> createState() => _DashbordscreenState();
@@ -83,7 +92,8 @@ class _DashbordscreenState extends State<Dashbordscreen> {
         Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamattendance()));
         break;
         case "Manager Leave Apporval":
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const Managerleaveapporval()));
+        Navigator.push(context, MaterialPageRoute(builder: (context) =>  ManagerLeaveApproval(
+          )));
         break;case "Team Report ":
         Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamreport()));
         break;case "Event Calender":
@@ -176,7 +186,7 @@ class _DashbordscreenState extends State<Dashbordscreen> {
     screenWidth = MediaQuery.of(context).size.width.w;
 
     return SafeArea(
-        top: true,
+        top: false,
         child: isManager == true
             ?
 

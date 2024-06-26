@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,10 +31,15 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
   int totalAbsent = 0;
   List<Map<String, dynamic>> employeeData = [];
 
+  // Page controller for swipe navigation
+  late PageController _pageController;
+  int _currentPageIndex = 0;
+
   @override
   void initState() {
     super.initState();
     fetchAttendanceData();
+    _pageController = PageController(initialPage: 0);
   }
 
   Future<void> fetchAttendanceData() async {
@@ -108,76 +114,32 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
         backgroundColor: Colors.red,
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildInfoContainer("Total Emp", totalEmployees.toString(), Colors.red),
-                _buildInfoContainer("Total Present", totalPresent.toString(), Colors.green),
-                _buildInfoContainer("Total Absent", totalAbsent.toString(), Colors.pink),
+                _buildInfoContainer("Total Emp", totalEmployees.toString(), Colors.red, 0),
+                _buildInfoContainer("Total Present", totalPresent.toString(), Colors.green, 1),
+                _buildInfoContainer("Total Absent", totalAbsent.toString(), Colors.pink, 2),
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              itemCount: employeeData.length,
-              itemBuilder: (context, index) {
-                final employee = employeeData[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                  child: Container(
-                    padding: EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              employee['first_name'] ?? '',
-                              style: TextStyle(
-                                fontSize: 18.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4.0),
-                            Text(
-                              employee['phone_no'] ?? '',
-                              style: TextStyle(
-                                fontSize: 16.0,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          children: [
-                            Text(
-                              employee['emp_code'] ?? '',
-                              style: TextStyle(
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.call, color: Colors.green),
-                              onPressed: () {
-                                _makePhoneCall(employee['phone_no']);
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+            child: PageView(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPageIndex = index;
+                });
               },
+              children: [
+                _buildEmployeeList(employeeData),
+                _buildEmployeeList(employeeData.where((emp) => emp['status'] == 'Present').toList()),
+                _buildEmployeeList(employeeData.where((emp) => emp['status'] == 'Absent').toList()),
+              ],
             ),
           ),
         ],
@@ -185,22 +147,117 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
     );
   }
 
-  Widget _buildInfoContainer(String title, String value, Color color) {
-    return Container(
-      color: color,
-      width: 130,
-      height: 80,
-      child: Center(
-        child: Text(
-          "$title\n$value",
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+  Widget _buildInfoContainer(String title, String value, Color color, int index) {
+    return GestureDetector(
+      onTap: () {
+        _pageController.animateToPage(
+          index,
+          duration: Duration(milliseconds: 500),
+          curve: Curves.ease,
+        );
+      },
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0.8), color],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEmployeeList(List<Map<String, dynamic>> employees) {
+    return ListView.builder(
+      itemCount: employees.length,
+      itemBuilder: (context, index) {
+        final employee = employees[index];
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+          child: Container(
+            padding: EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(8.0),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        employee['first_name'] ?? '',
+                        style: TextStyle(
+                          fontSize: 18.0,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4.0),
+                      Text(
+                        employee['phone_no'] ?? '',
+                        style: TextStyle(
+                          fontSize: 16.0,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      employee['emp_code'] ?? '',
+                      style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.call, color: Colors.green),
+                      onPressed: () {
+                        _makePhoneCall(employee['phone_no']);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

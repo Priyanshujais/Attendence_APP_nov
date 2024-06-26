@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApplyLeave extends StatefulWidget {
-  const ApplyLeave({super.key});
+  const ApplyLeave({Key? key}) : super(key: key);
 
   @override
   State<ApplyLeave> createState() => _LeaveScreenState();
@@ -92,7 +92,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
         _showThankYouDialog();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to apply leave: ${jsonResponse['message']}')),
+          SnackBar(
+              content:
+              Text('Failed to apply leave: ${jsonResponse['message']}')),
         );
       }
     } else {
@@ -108,8 +110,8 @@ class _LeaveScreenState extends State<ApplyLeave> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("Thank You!"),
-          content:
-          const Text("Your leave application has been submitted successfully."),
+          content: const Text(
+              "Your leave application has been submitted successfully."),
           actions: <Widget>[
             TextButton(
               child: const Text("OK"),
@@ -125,6 +127,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
 
   @override
   Widget build(BuildContext context) {
+    ScreenUtil.init(context,
+        designSize: Size(360, 690));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -135,10 +140,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
       ),
       body: Stack(
         children: [
-          // Background image with low visibility
           Positioned.fill(
             child: Opacity(
-              opacity: 0.2, // Adjust the opacity as needed
+              opacity: 0.2,
               child: Image.asset(
                 'assets/images/zarvis.png', // Replace with your background image asset
                 // fit: BoxFit.cover,
@@ -147,10 +151,10 @@ class _LeaveScreenState extends State<ApplyLeave> {
           ),
           SingleChildScrollView(
             child: Container(
+              padding: EdgeInsets.all(ScreenUtil().setWidth(16)),
               height: MediaQuery.of(context).size.height -
                   kToolbarHeight -
                   MediaQuery.of(context).padding.top,
-              padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -158,12 +162,12 @@ class _LeaveScreenState extends State<ApplyLeave> {
                     Text(
                       "Apply Leave",
                       style: TextStyle(
-                        fontSize: 24.sp,
+                        fontSize: ScreenUtil().setSp(24),
                         fontWeight: FontWeight.bold,
                         color: Colors.red,
                       ),
                     ),
-                    SizedBox(height: 20.h),
+                    SizedBox(height: ScreenUtil().setHeight(20)),
                     SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,19 +179,19 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 child: Text(
                                   "From Date:",
                                   style: TextStyle(
-                                      fontSize: 18.sp,
+                                      fontSize: ScreenUtil().setSp(18),
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Expanded(
                                 flex: 4,
                                 child: Container(
-                                  height: 40.h,
+                                  height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: const [
-                                       BoxShadow(
+                                      BoxShadow(
                                         color: Colors.black26,
                                         blurRadius: 6,
                                         offset: Offset(0, 2),
@@ -198,7 +202,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     controller: _fromDateController,
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10.h, horizontal: 10.w),
+                                          vertical: ScreenUtil().setHeight(10),
+                                          horizontal:
+                                          ScreenUtil().setWidth(10)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
@@ -222,7 +228,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: ScreenUtil().setHeight(10)),
                           Row(
                             children: [
                               Expanded(
@@ -230,19 +236,19 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 child: Text(
                                   "To Date:",
                                   style: TextStyle(
-                                      fontSize: 18.sp,
+                                      fontSize: ScreenUtil().setSp(18),
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Expanded(
                                 flex: 4,
                                 child: Container(
-                                  height: 40.h,
+                                  height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: const [
-                                       BoxShadow(
+                                      BoxShadow(
                                         color: Colors.black26,
                                         blurRadius: 6,
                                         offset: Offset(0, 2),
@@ -253,7 +259,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     controller: _toDateController,
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10.h, horizontal: 10.w),
+                                          vertical: ScreenUtil().setHeight(10),
+                                          horizontal:
+                                          ScreenUtil().setWidth(10)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
@@ -276,7 +284,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: ScreenUtil().setHeight(10)),
                           Row(
                             children: [
                               Expanded(
@@ -284,14 +292,14 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 child: Text(
                                   "Subject:",
                                   style: TextStyle(
-                                      fontSize: 18.sp,
+                                      fontSize: ScreenUtil().setSp(18),
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Expanded(
                                 flex: 4,
                                 child: Container(
-                                  height: 40.h,
+                                  height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
@@ -307,7 +315,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     controller: _subjectController,
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10.h, horizontal: 10.w),
+                                          vertical: ScreenUtil().setHeight(10),
+                                          horizontal:
+                                          ScreenUtil().setWidth(10)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
@@ -319,7 +329,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: ScreenUtil().setHeight(10)),
                           Row(
                             children: [
                               Expanded(
@@ -327,19 +337,19 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 child: Text(
                                   "Leave Type:",
                                   style: TextStyle(
-                                      fontSize: 18.sp,
+                                      fontSize: ScreenUtil().setSp(18),
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Expanded(
                                 flex: 4,
                                 child: Container(
-                                  height: 40.h,
+                                  height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     borderRadius: BorderRadius.circular(20),
                                     boxShadow: const [
-                                       BoxShadow(
+                                      BoxShadow(
                                         color: Colors.black26,
                                         blurRadius: 6,
                                         offset: Offset(0, 2),
@@ -361,7 +371,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     }).toList(),
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10.h, horizontal: 10.w),
+                                          vertical: ScreenUtil().setHeight(10),
+                                          horizontal:
+                                          ScreenUtil().setWidth(10)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
@@ -373,7 +385,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10.h),
+                          SizedBox(height: ScreenUtil().setHeight(10)),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -382,13 +394,11 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 child: Text(
                                   "Reason:",
                                   style: TextStyle(
-                                      fontSize: 18.sp,
+                                      fontSize: ScreenUtil().setSp(18),
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              SizedBox(
-                                  width:
-                                  10.w), // Adjust as needed for spacing
+                              SizedBox(width: ScreenUtil().setWidth(10)),
                               Expanded(
                                 flex: 4,
                                 child: Container(
@@ -408,7 +418,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     maxLines: 3,
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(
-                                          vertical: 10.h, horizontal: 10.w),
+                                          vertical: ScreenUtil().setHeight(10),
+                                          horizontal:
+                                          ScreenUtil().setWidth(10)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
@@ -420,22 +432,22 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 20.h),
+                          SizedBox(height: ScreenUtil().setHeight(20)),
                           Center(
                             child: ElevatedButton(
                               onPressed: _submitForm,
                               child: Text(
                                 "Apply",
                                 style: TextStyle(
-                                  fontSize: 18.sp,
+                                  fontSize: ScreenUtil().setSp(18),
                                   color: Colors.white,
                                 ),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: 80.w,
-                                  vertical: 12.h,
+                                  horizontal: ScreenUtil().setWidth(80),
+                                  vertical: ScreenUtil().setHeight(12),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30.0),
