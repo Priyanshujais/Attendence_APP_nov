@@ -47,7 +47,8 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString('token')!;
 
-      final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/getTodayAttendence');
+      final url = Uri.parse(
+          'http://35.154.148.75/zarvis/api/v2/getTodayAttendence');
       final response = await http.post(
         url,
         headers: {
@@ -73,7 +74,8 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
             totalPresent = jsonResponse['countpresent'] ?? 0;
             totalAbsent = jsonResponse['countabsent'] ?? 0;
 
-            if (jsonResponse['attendance_data'] != null && jsonResponse['attendance_data'] is List) {
+            if (jsonResponse['attendance_data'] != null &&
+                jsonResponse['attendance_data'] is List) {
               List<dynamic> attendanceData = jsonResponse['attendance_data'];
               employeeData = attendanceData
                   .where((emp) => emp is Map<String, dynamic>)
@@ -83,7 +85,8 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
           });
         } else {
           // Handle API error scenario
-          print('API returned status 0 or other error: ${jsonResponse['message']}');
+          print(
+              'API returned status 0 or other error: ${jsonResponse['message']}');
         }
       } else {
         // Handle HTTP error scenario
@@ -121,9 +124,12 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildInfoContainer("Total Emp", totalEmployees.toString(), Colors.red, 0),
-                _buildInfoContainer("Total Present", totalPresent.toString(), Colors.green, 1),
-                _buildInfoContainer("Total Absent", totalAbsent.toString(), Colors.pink, 2),
+                _buildInfoContainer(
+                    "Total Emp", totalEmployees.toString(), Colors.red, 0),
+                _buildInfoContainer(
+                    "Total Present", totalPresent.toString(), Colors.green, 1),
+                _buildInfoContainer(
+                    "Total Absent", totalAbsent.toString(), Colors.pink, 2),
               ],
             ),
           ),
@@ -137,8 +143,12 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
               },
               children: [
                 _buildEmployeeList(employeeData),
-                _buildEmployeeList(employeeData.where((emp) => emp['status'] == 'Present').toList()),
-                _buildEmployeeList(employeeData.where((emp) => emp['status'] == 'Absent').toList()),
+                _buildEmployeeList(
+                    employeeData.where((emp) => emp['status'] == 'Present')
+                        .toList()),
+                _buildEmployeeList(
+                    employeeData.where((emp) => emp['status'] == 'Absent')
+                        .toList()),
               ],
             ),
           ),
@@ -204,54 +214,64 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
       itemBuilder: (context, index) {
         final employee = employees[index];
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+          padding: EdgeInsets.symmetric(
+            vertical: ScreenUtil().setHeight(8.0),
+            horizontal: ScreenUtil().setWidth(
+                16.0), // Adjust horizontal padding as needed
+          ),
           child: Container(
-            padding: EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(ScreenUtil().setWidth(16.0)),
             decoration: BoxDecoration(
               color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(ScreenUtil().setWidth(8.0)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
+                  flex: 3, // Adjust flex values as needed
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         employee['first_name'] ?? '',
                         style: TextStyle(
-                          fontSize: 18.0,
+                          fontSize: ScreenUtil().setSp(18.0),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 4.0),
+                      SizedBox(height: ScreenUtil().setHeight(4.0)),
                       Text(
                         employee['phone_no'] ?? '',
                         style: TextStyle(
-                          fontSize: 16.0,
+                          fontSize: ScreenUtil().setSp(16.0),
                           color: Colors.grey[600],
                         ),
                       ),
                     ],
                   ),
                 ),
-                Column(
-                  children: [
-                    Text(
-                      employee['emp_code'] ?? '',
-                      style: TextStyle(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  flex: 1, // Adjust flex values as needed
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        employee['emp_code'] ?? '',
+                        style: TextStyle(
+                          fontSize: ScreenUtil().setSp(16.0),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.call, color: Colors.green),
-                      onPressed: () {
-                        _makePhoneCall(employee['phone_no']);
-                      },
-                    ),
-                  ],
+                      IconButton(
+                        icon: Icon(Icons.call, color: Colors.green),
+                        onPressed: () {
+                          _makePhoneCall(employee['phone_no']);
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

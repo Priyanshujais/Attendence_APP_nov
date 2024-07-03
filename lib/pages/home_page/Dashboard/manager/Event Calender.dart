@@ -1,8 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Model class to represent leave event data
+class LeaveEvent {
+  final String name;
+  final String empCode;
+  final String leaveMessage;
+  final String leaveType;
+  final String status;
+  final String firstName;
+  final String lastName;
+
+  LeaveEvent({
+    required this.name,
+    required this.empCode,
+    required this.leaveMessage,
+    required this.leaveType,
+    required this.status,
+    required this.firstName,
+    required this.lastName,
+  });
+}
 
 class EventCalendar extends StatefulWidget {
-  const EventCalendar({super.key});
+  const EventCalendar({Key? key}) : super(key: key);
 
   @override
   State<EventCalendar> createState() => _EventCalendarState();
@@ -10,48 +34,67 @@ class EventCalendar extends StatefulWidget {
 
 class _EventCalendarState extends State<EventCalendar> {
   late Map<DateTime, List<String>> _events;
-  late List<String> _selectedEvents;
+  late List<LeaveEvent> _selectedEvents;
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _events = {
-      DateTime.utc(2024, 1, 1): ['New Year\'s Day'],
-      DateTime.utc(2024, 1, 14): ['Makar Sankranti/Pongal'],
-      DateTime.utc(2024, 1, 26): ['Republic Day'],
-      DateTime.utc(2024, 3, 8): ['Maha Shivaratri'],
-      DateTime.utc(2024, 3, 25): ['Holi'],
-      DateTime.utc(2024, 4, 14): ['Dr. Ambedkar Jayanti'],
-      DateTime.utc(2024, 4, 17): ['Mahavir Jayanti'],
-      DateTime.utc(2024, 4, 21): ['Ram Navami'],
-      DateTime.utc(2024, 4, 24): ['Mahavir Jayanti'],
-      DateTime.utc(2024, 4, 29): ['Good Friday'],
-      DateTime.utc(2024, 5, 1): ['Labour Day'],
-      DateTime.utc(2024, 6, 20): ['Eid al-Fitr'],
-      DateTime.utc(2024, 7, 7): ['Bakrid/Eid al-Adha'],
-      DateTime.utc(2024, 8, 15): ['Independence Day'],
-      DateTime.utc(2024, 8, 19): ['Raksha Bandhan'],
-      DateTime.utc(2024, 9, 5): ['Janmashtami'],
-      DateTime.utc(2024, 9, 17): ['Ganesh Chaturthi'],
-      DateTime.utc(2024, 10, 2): ['Gandhi Jayanti'],
-      DateTime.utc(2024, 10, 12): ['Dussehra'],
-      DateTime.utc(2024, 10, 20): ['Eid e Milad'],
-      DateTime.utc(2024, 10, 31): ['Diwali'],
-      DateTime.utc(2024, 11, 1): ['Govardhan Puja'],
-      DateTime.utc(2024, 11, 2): ['Bhai Dooj'],
-      DateTime.utc(2024, 11, 15): ['Chhath Puja'],
-      DateTime.utc(2024, 11, 30): ['Guru Nanak Jayanti'],
-      DateTime.utc(2024, 12, 25): ['Christmas'],
-
-      // Add more holidays and events here
-    };
-    _selectedEvents = _events[_selectedDay] ?? [];
+    _events = {}; // Remove holidays to show only user-added events
+    _selectedEvents = [];
   }
 
   List<String> _getEventsForDay(DateTime day) {
     return _events[day] ?? [];
+  }
+
+  Future<void> _fetchLeaveInfo(DateTime selectedDate) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? rmEmpCode = prefs.getString('emp_code');
+    String? token = prefs.getString('token');
+
+    if (rmEmpCode != null && token != null) {
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v2/leaveInfo'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'rm_emp_code': rmEmpCode,
+          'date': selectedDate.toIso8601String(), // Convert DateTime to ISO 8601 format
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        var responseData = jsonDecode(response.body);
+        if (responseData['status'] == '1') {
+          List<dynamic> data = responseData['data'];
+          List<LeaveEvent> events = data.map((event) => LeaveEvent(
+            name: '${event['first_name']} ${event['last_name']}',
+            empCode: event['emp_code'],
+            leaveMessage: event['leave_message'],
+            leaveType: event['leave_type'],
+            status: event['status'],
+            firstName: event['first_name'],
+            lastName: event['last_name'],
+          )).toList();
+
+          setState(() {
+            _selectedEvents = events;
+          });
+        } else {
+          setState(() {
+            _selectedEvents = [];
+          });
+        }
+      } else {
+        setState(() {
+          _selectedEvents = [];
+        });
+      }
+    }
   }
 
   @override
@@ -61,31 +104,10 @@ class _EventCalendarState extends State<EventCalendar> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            "Event Calendar",
+            "Emp leave calendar",
             style: TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.red,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.calendar_today, color: Colors.white),
-              onPressed: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: _focusedDay,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2030),
-                  selectableDayPredicate: (DateTime day) => true,
-                );
-                if (picked != null && picked != _focusedDay) {
-                  setState(() {
-                    _focusedDay = picked;
-                    _selectedDay = picked;
-                    _selectedEvents = _getEventsForDay(picked);
-                  });
-                }
-              },
-            ),
-          ],
         ),
         body: Center(
           child: Padding(
@@ -104,8 +126,9 @@ class _EventCalendarState extends State<EventCalendar> {
                     setState(() {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
-                      _selectedEvents = _getEventsForDay(selectedDay);
+                      _selectedEvents = [];
                     });
+                    _fetchLeaveInfo(selectedDay);
                   },
                   eventLoader: _getEventsForDay,
                   calendarStyle: CalendarStyle(
@@ -124,17 +147,8 @@ class _EventCalendarState extends State<EventCalendar> {
                       ? ListView.builder(
                     itemCount: _selectedEvents.length,
                     itemBuilder: (context, index) {
-                      return Center(
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            border: Border.all(),
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: ListTile(
-                            title: Text(_selectedEvents[index]),
-                          ),
-                        ),
+                      return LeaveEventItem(
+                        leaveEvent: _selectedEvents[index],
                       );
                     },
                   )
@@ -148,6 +162,66 @@ class _EventCalendarState extends State<EventCalendar> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class LeaveEventItem extends StatefulWidget {
+  final LeaveEvent leaveEvent;
+
+  const LeaveEventItem({required this.leaveEvent});
+
+  @override
+  _LeaveEventItemState createState() => _LeaveEventItemState();
+}
+
+class _LeaveEventItemState extends State<LeaveEventItem> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _isExpanded = !_isExpanded;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          border: Border.all(),
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Name: ${widget.leaveEvent.name}',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Emp Code: ${widget.leaveEvent.empCode}',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            if (_isExpanded)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 8.0),
+                  Text('Leave Message: ${widget.leaveEvent.leaveMessage}'),
+                  Text('Leave Type: ${widget.leaveEvent.leaveType}'),
+                  Text('Status: ${widget.leaveEvent.status}'),
+                ],
+              ),
+          ],
         ),
       ),
     );

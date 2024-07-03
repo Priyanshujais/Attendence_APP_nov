@@ -96,7 +96,7 @@ class _DashbordscreenState extends State<Dashbordscreen> {
           )));
         break;case "Team Report ":
         Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamreport()));
-        break;case "Event Calender":
+        break;case "Emp Leave Calender":
         Navigator.push(context, MaterialPageRoute(builder: (context) => const EventCalendar()));
         break;
       case "Logout":

@@ -1,20 +1,24 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'package:simple_month_year_picker/simple_month_year_picker.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:simple_month_year_picker/simple_month_year_picker.dart';
+import 'package:http/http.dart' as http;
 
 class Calenderscreen extends StatefulWidget {
-  const Calenderscreen({super.key});
+  const Calenderscreen({Key? key}) : super(key: key);
 
   @override
   State<Calenderscreen> createState() => _CalenderscreenState();
 }
 
 class _CalenderscreenState extends State<Calenderscreen> {
-  double screenHeight = 0;
-  double screenWidth = 0;
-  String attendanceLog = "";
+  List<Map<String, dynamic>> attendanceData = [];
   DateTime selectedDate = DateTime.now();
+  int empId = 0; // Your employee ID, fetched from SharedPreferences
+  String token = ""; // Your token, fetched from SharedPreferences
 
   @override
   void initState() {
@@ -25,94 +29,205 @@ class _CalenderscreenState extends State<Calenderscreen> {
   void loadAttendanceLog() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      attendanceLog = prefs.getString('dailyLog') ?? 'No attendance records found.';
+      empId = prefs.getInt('emp_id') ?? 0;
+      token = prefs.getString('token') ?? '';
     });
+    updateAttendanceLog(selectedDate);
   }
 
   void updateAttendanceLog(DateTime date) async {
-    // Fetch the attendance log for the selected month from SharedPreferences or your data source
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String apiUrl = 'http://35.154.148.75/zarvis/api/v2/getMonthlyListing';
     String monthKey = DateFormat('MM-yyyy').format(date);
-    setState(() {
-      attendanceLog = prefs.getString(monthKey) ?? 'No attendance records found for ${DateFormat('MMMM yyyy').format(date)}.';
-    });
+
+    // Prepare request headers
+    Map<String, String> headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    // Prepare request body
+    Map<String, dynamic> body = {
+      'emp_id': empId,
+      'month': monthKey,
+    };
+
+    // Make API call
+    http.Response response = await http.post(
+      Uri.parse(apiUrl),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      // Parse response JSON
+      Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      List<dynamic> data = jsonResponse['data'];
+
+      // Log the received data for debugging
+      print('Received data: ${jsonEncode(data)}');
+
+      // Update attendance data
+      setState(() {
+        attendanceData = List<Map<String, dynamic>>.from(data);
+      });
+    } else {
+      // Handle API error
+      print('API Error: ${response.statusCode}');
+      setState(() {
+        attendanceData = [];
+      });
+    }
   }
+
+
+  Widget buildAttendanceRecord(Map<String, dynamic> record) {
+    String title = record['title'] ?? 'Unknown';
+    String day = DateFormat('EEEE').format(DateTime.parse(record['date']));
+    String date = DateFormat('MMM dd').format(DateTime.parse(record['date']));
+    String punchIn = record['punchInDT'] != null
+        ? DateFormat.Hm().format(DateTime.parse(record['punchInDT']))
+        : 'N/A';
+    String punchOut = record['punchOutDT'] != null
+        ? DateFormat.Hm().format(DateTime.parse(record['punchOutDT']))
+        : 'N/A';
+    String totalWorkingTime = record['totalWorkingTime'] ?? '00:00:00';
+    log(record['totalWorkingTime']);
+    Color statusColor = Colors.grey; // Default color
+
+    // Determine color based on title
+    switch (title.toLowerCase()) {
+      case 'present':
+        statusColor = Colors.green;
+        break;
+      case 'absent':
+        statusColor = Colors.red;
+        break;
+      case 'half day':
+        statusColor = Colors.pink;
+        break;
+      case 'week-off':
+        statusColor = Colors.blue;
+        break;
+      case 'holiday':
+        statusColor = Colors.lightBlue;
+        break;
+      case 'comp-off':
+        statusColor = Colors.purple;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.1), // Use opacity for background color
+        border: Border.all(
+          color: statusColor,
+          width: 2,
+        ), // Border color based on status
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$day, $date',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Check In: $punchIn',
+            style: TextStyle(fontSize: 14),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Check Out: $punchOut',
+            style: TextStyle(fontSize: 14),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Total Working Hours: $totalWorkingTime',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    screenHeight = MediaQuery.of(context).size.height;
-    screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
+      appBar: AppBar(
+        title: Text('My Attendance'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              alignment: Alignment.centerLeft,
-              margin: const EdgeInsets.only(top: 32),
-              child: Text(
-                "My Attendance",
-                style: TextStyle(fontSize: screenWidth / 18),
-              ),
-            ),
-            Stack(
-              children: [
-                Container(
-                  alignment: Alignment.centerLeft,
-                  margin: const EdgeInsets.only(top: 32),
-                  child: Text(
+            GestureDetector(
+              onTap: () async {
+                final month = await SimpleMonthYearPicker.showMonthYearPickerDialog(
+                  context: context,
+                  titleTextStyle: TextStyle(),
+                  selectionColor: Colors.red,
+                  monthTextStyle: TextStyle(),
+                  yearTextStyle: TextStyle(),
+                  disableFuture: true,
+                );
+                if (month != null) {
+                  setState(() {
+                    selectedDate = month;
+                  });
+                  updateAttendanceLog(month);
+                }
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
                     DateFormat("MMMM yyyy").format(selectedDate),
-                    style: TextStyle(fontSize: screenWidth / 18),
+                    style: TextStyle(fontSize: 20),
                   ),
-                ),
-                Container(
-                  alignment: Alignment.centerRight,
-                  margin: const EdgeInsets.only(top: 32),
-                  child: GestureDetector(
-                    onTap: () async {
-                      final month = await SimpleMonthYearPicker.showMonthYearPickerDialog(
-                        context: context,
-                        titleTextStyle: const TextStyle(),
-                        selectionColor: Colors.red,
-                        monthTextStyle: const TextStyle(),
-                        yearTextStyle: const TextStyle(),
-                        disableFuture: true,
-                      );
-                      if (month != null) {
-                        setState(() {
-                          selectedDate = month;
-                        });
-                        updateAttendanceLog(month);
-                      }
-                    },
-                    child: Text(
-                      "Pick a Month",
-                      style: TextStyle(fontSize: screenWidth / 18, color: Colors.blue),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            Container(
-              margin: const EdgeInsets.only(top: 12, bottom: 32),
-              height: 150,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 18,
-                    offset: Offset(2, 2),
+                  Row(
+                    children: [
+                      Text('Pick a Month'),
+                      SizedBox(width: 8),
+                      Icon(Icons.calendar_today),
+                    ],
                   ),
                 ],
-                borderRadius: BorderRadius.all(Radius.circular(20)),
               ),
-              child: Center(
-                child: Text(
-                  attendanceLog,
-                  style: TextStyle(fontSize: screenWidth / 20, color: Colors.black54),
-                ),
-              ),
+            ),
+            SizedBox(height: 16),
+            if (attendanceData.isEmpty)
+              Center(child: Text('No attendance records found')),
+            Column(
+              children: attendanceData
+                  .map((record) => buildAttendanceRecord(record))
+                  .toList(),
             ),
           ],
         ),

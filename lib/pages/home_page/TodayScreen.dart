@@ -55,12 +55,7 @@ class _TodayscreenState extends State<Todayscreen> {
   String totalHoursWorked = "00:00:00";
   String emp_name = "";
 
-  // Define your office location coordinates
-  final double officeLatitude =
-  28.607440000000004; // Replace with your office latitude
-  final double officeLongitude =
-  77.3807874269844; // Replace with your office longitude
-  final double officeRadius = 10; // Radius in meters for office proximity check
+
 
   @override
   void initState() {
@@ -93,124 +88,165 @@ class _TodayscreenState extends State<Todayscreen> {
       print(emp_name);
     });
   }
-
   Future<void> showLocationDialog(bool isCheckingIn) async {
     var locationPermissionStatus = await Permission.location.request();
 
     if (locationPermissionStatus.isGranted) {
       Position position = await fetchUserLocation();
-      bool isAtOffice =
-      isLocationAtOffice(position.latitude, position.longitude);
 
       // Fetch the initial address using reverse geocoding
-      String initialAddress =
-      await fetchLocationDetails(position.latitude, position.longitude);
+      String initialAddress = await fetchLocationDetails(position.latitude, position.longitude);
 
       showDialog(
         context: context,
         builder: (context) {
           TextEditingController reasonController = TextEditingController();
+          TextEditingController startTimeController = TextEditingController();
+          TextEditingController endTimeController = TextEditingController();
+          TextEditingController taskController = TextEditingController();
+          String selectedLocation = "In Office"; // Default selection
 
-          return AlertDialog(
-            title: const Text("Confirm Location"),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    height: MediaQuery.of(context).size.height * 0.4,
-                    child: Stack(
-                      children: [
-                        GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target:
-                            LatLng(position.latitude, position.longitude),
-                            zoom: 16,
-                          ),
-                          markers: {
-                            Marker(
-                              markerId: const MarkerId('location'),
-                              position:
-                              LatLng(position.latitude, position.longitude),
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text("Confirm Location"),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        height: MediaQuery.of(context).size.height * 0.4,
+                        child: Stack(
+                          children: [
+                            GoogleMap(
+                              initialCameraPosition: CameraPosition(
+                                target: LatLng(position.latitude, position.longitude),
+                                zoom: 16,
+                              ),
+                              markers: {
+                                Marker(
+                                  markerId: const MarkerId('location'),
+                                  position: LatLng(position.latitude, position.longitude),
+                                ),
+                              },
                             ),
-                          },
+                            Positioned(
+                              top: 16,
+                              left: 16,
+                              right: 16,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Current Location:",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      initialAddress,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        Positioned(
-                          top: 16,
-                          left: 16,
-                          right: 16,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Current Location:",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  initialAddress,
-                                  style: const TextStyle(
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!isAtOffice)
-                    TextFormField(
-                      controller: reasonController,
-                      decoration: const InputDecoration(
-                        labelText: 'Reason for being outside office',
                       ),
-                      minLines: 3,
-                      maxLines: 5,
-                    ),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(false); // Close the dialog with cancel result
-                },
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  String reason = reasonController.text.trim();
-                  Navigator.of(context)
-                      .pop(true); // Close the dialog with confirm result
+                      DropdownButton<String>(
+                        value: selectedLocation,
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedLocation = newValue!;
+                          });
+                        },
+                        items: <String>['In Office', 'Outside of Office']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ),
+                      TextFormField(
+                        controller: reasonController,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter your comment',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Comment is required';
+                          }
+                          return null;
+                        },
+                        minLines: 3,
+                        maxLines: 5,
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          showAddReportDialog(startTimeController, endTimeController, taskController);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add),
+                            Text('Add Report'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(false); // Close the dialog with cancel result
+                    },
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      String reason = reasonController.text.trim();
+                      bool isValid = reason.isNotEmpty;
 
-                  if (isCheckingIn) {
-                    await handleCheckIn(position, reason);
-                  } else {
-                    await handleCheckOut(position, reason);
-                  }
-                },
-                child: const Text('Confirm'),
-              ),
-            ],
+                      if (isValid) {
+                        Navigator.of(context).pop(true); // Close the dialog with confirm result
+
+                        if (isCheckingIn) {
+                          await handleCheckIn(position, reason, selectedLocation);
+                        } else {
+                          await handleCheckOut(position, reason, selectedLocation);
+                        }
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Comment is required'),
+                        ));
+                      }
+                    },
+                    child: const Text('Mark Attendance'),
+                  ),
+                ],
+              );
+            },
           );
         },
       );
@@ -221,15 +257,105 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  Future<void> handleCheckIn(Position position, String reason) async {
+  void showAddReportDialog(TextEditingController startTimeController, TextEditingController endTimeController, TextEditingController taskController) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Report'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: startTimeController,
+                  decoration: const InputDecoration(
+                    labelText: 'Start Time',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: endTimeController,
+                  decoration: const InputDecoration(
+                    labelText: 'End Time',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: taskController,
+                  decoration: const InputDecoration(
+                    labelText: 'Explain the task you performed',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Task explanation is required';
+                    }
+                    return null;
+                  },
+                  minLines: 3,
+                  maxLines: 5,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                bool isValid = startTimeController.text.isNotEmpty &&
+                    endTimeController.text.isNotEmpty &&
+                    taskController.text.isNotEmpty;
+
+                if (isValid) {
+                  // Handle adding report logic here
+                  Navigator.of(context).pop(); // Close the dialog
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Please fill all fields'),
+                  ));
+                }
+              },
+              child: const Text('Add Report'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+
+
+  Future<Position> fetchUserLocation() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      throw Exception('Error fetching user location: $e');
+    }
+  }
+
+
+
+  Future<void> handleCheckIn(Position position, String reason, String workingLocation) async {
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
       String checkInTimeString = DateFormat('hh:mm a').format(now);
       String checkInDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkInLocationString =
-      await fetchLocationDetails(position.latitude, position.longitude);
+      String checkInLocationString = await fetchLocationDetails(position.latitude, position.longitude);
+
+
 
       // API body
       final checkInBody = {
@@ -243,12 +369,12 @@ class _TodayscreenState extends State<Todayscreen> {
         "punch_in_lat": position.latitude.toString(),
         "punch_in_long": position.longitude.toString(),
         "punch_in_address": checkInLocationString,
-        "punch_in_remark": "reason",
-        "working_location": "In Office",
+        "punch_in_remark": reason,
+        "working_location": workingLocation,
         "punch_in_date_time": checkInDate,
-        "attendancedate": checkInDate,
-        "attendance_manager_remark": "I am In",
-        "in_geofence": "yes"
+        "attendancedate": checkInDate, //attendancedate
+        "attendance_manager_remark": "",
+        "in_geofence": "yes",
       };
 
       final response = await http.post(
@@ -268,10 +394,7 @@ class _TodayscreenState extends State<Todayscreen> {
             checkInLocation = checkInLocationString;
             isCheckedIn = true;
             sliderText = "Slide to Check Out";
-            workingLocation =
-            isLocationAtOffice(position.latitude, position.longitude)
-                ? "In Office"
-                : "Outside of Office";
+            this.workingLocation = workingLocation;
           });
 
           await prefs.setString('checkInTime', checkInTimeString);
@@ -294,22 +417,20 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  bool isDayCompleted = false;
-  Future<void> handleCheckOut(Position position, String reason) async {
+  Future<void> handleCheckOut(Position position, String reason, String workingLocation) async {
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
       String checkOutTimeString = DateFormat('hh:mm a').format(now);
       String checkOutDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkOutLocationString =
-      await fetchLocationDetails(position.latitude, position.longitude);
+      String checkOutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
 
       // Calculate duration between check-in and check-out
-      DateTime lastCheckedDate =
-      DateTime.parse(prefs.getString('lastCheckedDate') ?? now.toString());
+      DateTime lastCheckedDate = DateTime.parse(prefs.getString('lastCheckedDate') ?? now.toString());
       Duration duration = now.difference(lastCheckedDate);
       String totalDuration = formatDuration(duration);
+      String checkoutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
 
       // API body
       final checkOutBody = {
@@ -321,15 +442,12 @@ class _TodayscreenState extends State<Todayscreen> {
         "company_id": widget.companyId,
         "punch_out_lat": position.latitude.toString(),
         "punch_out_long": position.longitude.toString(),
-        "working_location":
-        isLocationAtOffice(position.latitude, position.longitude)
-            ? "In Office"
-            : "Outside of Office",
+        "punch_out_address":checkoutLocationString,
+        "punch_out_remark": reason,
+        "working_location": workingLocation,
         "punch_out_date_time": checkOutDate,
         "attendancedate": checkOutDate,
-        "in_geofence": isLocationAtOffice(position.latitude, position.longitude)
-            ? "yes"
-            : "no"
+        "in_geofence":  "yes"
       };
 
       final response = await http.post(
@@ -349,17 +467,12 @@ class _TodayscreenState extends State<Todayscreen> {
             checkOutLocation = checkOutLocationString;
             isCheckedIn = false;
             sliderText = "Slide to Check In";
-            totalHoursWorked = totalDuration;
-            workingLocation =
-            isLocationAtOffice(position.latitude, position.longitude)
-                ? "In Office"
-                : "Outside of Office";
+            this.workingLocation = workingLocation;
           });
 
           await prefs.setString('checkOutTime', checkOutTimeString);
           await prefs.setString('checkOutDate', checkOutDate);
           await prefs.setString('checkOutLocation', checkOutLocationString);
-          await prefs.setString('totalHoursWorked', totalDuration);
           await prefs.setBool('isCheckedIn', false);
         } else {
           throw Exception(responseData["message"]);
@@ -374,11 +487,9 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  Future<Position> fetchUserLocation() async {
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
-  }
+
+  bool isDayCompleted = false;
+
 
   Future<String> fetchLocationDetails(double latitude, double longitude) async {
     try {
@@ -392,15 +503,15 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  bool isLocationAtOffice(double latitude, double longitude) {
-    double distanceInMeters = Geolocator.distanceBetween(
-      officeLatitude,
-      officeLongitude,
-      latitude,
-      longitude,
-    );
-    return distanceInMeters <= officeRadius;
-  }
+  // bool isLocationAtOffice(double latitude, double longitude) {
+  //   double distanceInMeters = Geolocator.distanceBetween(
+  //     officeLatitude,
+  //     officeLongitude,
+  //     latitude,
+  //     longitude,
+  //   );
+  //   return distanceInMeters <= officeRadius;
+  // }
 
   void resetTimes() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -571,7 +682,7 @@ class _TodayscreenState extends State<Todayscreen> {
                       text: DateTime.now().day.toString(),
                       style: TextStyle(
                           color: Colors.red,
-                          fontSize: screenWidth / 18.w,
+                          fontSize: screenWidth / 15.w,
                           fontWeight: FontWeight.bold),
                       children: [
                         TextSpan(
@@ -586,6 +697,7 @@ class _TodayscreenState extends State<Todayscreen> {
                     ),
                   ),
                 ),
+                SizedBox(height: 10,),
                 Container(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -593,13 +705,14 @@ class _TodayscreenState extends State<Todayscreen> {
                     style: TextStyle(fontSize: screenWidth / 18.w),
                   ),
                 ),
+                SizedBox(height: 10,),
                 Container(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Total Hours Worked: $totalHoursWorked",
                     style: TextStyle(fontSize: screenWidth / 18.w),
                   ),
-                ),
+                ), SizedBox(height: 10,),
                 Container(
                   alignment: Alignment.centerLeft,
                   margin: const EdgeInsets.only(bottom: 16),

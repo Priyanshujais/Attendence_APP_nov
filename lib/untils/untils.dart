@@ -73,7 +73,7 @@ List<String> Managermenu = [
   "Team attendance",
   "Manager Leave Apporval",
   "Team Report ",
-  "Event Calender",
+  "Emp Leave Calender",
   "Logout"
 
 ];

@@ -67,6 +67,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
 
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString('token')!;
+    String? empCode = prefs.getString('emp_code');
 
     final url = Uri.parse(
         'http://35.154.148.75/zarvis/api/v2/ApplyLeave'); // Replace with your API endpoint
@@ -77,7 +78,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(<String, String>{
-        'emp_code': "E1614", // Replace with actual emp_code
+        'emp_code': empCode.toString(), // Replace with actual emp_code
         'leave_from_date': fromDate,
         'leave_to_date': toDate,
         'Subject': subject,
@@ -342,7 +343,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 ),
                               ),
                               Expanded(
-                                flex: 4,
+                                flex:4,
                                 child: Container(
                                   height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
@@ -373,7 +374,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                       contentPadding: EdgeInsets.symmetric(
                                           vertical: ScreenUtil().setHeight(10),
                                           horizontal:
-                                          ScreenUtil().setWidth(10)),
+                                          ScreenUtil().setWidth(2)),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(20),
                                         borderSide: BorderSide.none,
