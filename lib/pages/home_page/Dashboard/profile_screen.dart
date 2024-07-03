@@ -12,7 +12,6 @@ class Profile_Screen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<Profile_Screen> {
-  // Define a map to hold the field data
   final Map<String, TextEditingController> _controllers = {
     'Full Name': TextEditingController(),
     'Employee ID': TextEditingController(),
@@ -22,22 +21,32 @@ class _ProfileScreenState extends State<Profile_Screen> {
     'Email ID': TextEditingController(),
   };
 
+  bool _isLoading = false;
+  bool _hasError = false;
+
   @override
   void initState() {
     super.initState();
-    // Fetch data from the API and populate the controllers
     _fetchData();
   }
 
   Future<void> _fetchData() async {
     const String apiUrl = 'http://35.154.148.75/zarvis/api/v2/user';
 
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token'); // Retrieve the token from SharedPreferences
+      String? token = prefs.getString('token');
 
       if (token == null) {
-        print('Token is null');
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
         return;
       }
 
@@ -52,7 +61,6 @@ class _ProfileScreenState extends State<Profile_Screen> {
         final data = json.decode(response.body);
         final userDetails = data['userDetails'];
 
-        // Populate the controllers with the data from the API
         _controllers['Full Name']?.text = '${userDetails['first_name']} ${userDetails['last_name']}';
         _controllers['Employee ID']?.text = userDetails['emp_code'];
         _controllers['Company']?.text = userDetails['comp_name'];
@@ -60,22 +68,29 @@ class _ProfileScreenState extends State<Profile_Screen> {
         _controllers['Mobile']?.text = userDetails['phone_no'];
         _controllers['Email ID']?.text = userDetails['email'];
 
-        // Update the state to refresh the UI
-        setState(() {});
+        setState(() {
+          _isLoading = false;
+          _hasError = false;
+        });
       } else {
-        // Handle the case where the server returns an error
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
         print('Failed to load user data: ${response.statusCode}');
         print('Response body: ${response.body}');
       }
     } catch (e) {
-      // Handle the case where there is a network error
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
       print('Error fetching user data: $e');
     }
   }
 
   @override
   void dispose() {
-    // Dispose of the controllers when the widget is disposed
     _controllers.values.forEach((controller) => controller.dispose());
     super.dispose();
   }
@@ -84,8 +99,8 @@ class _ProfileScreenState extends State<Profile_Screen> {
   Widget build(BuildContext context) {
     ScreenUtil.init(context, designSize: Size(360, 690), minTextAdapt: true);
 
-    return SafeArea(top: true
-      ,
+    return SafeArea(
+      top: true,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -96,13 +111,11 @@ class _ProfileScreenState extends State<Profile_Screen> {
         ),
         body: Stack(
           children: [
-            // Background image with low visibility
             Positioned.fill(
               child: Opacity(
-                opacity: 0.2, // Adjust the opacity as needed
+                opacity: 0.2,
                 child: Image.asset(
                   "assets/images/zarvis.png",
-                 // fit: BoxFit.,
                 ),
               ),
             ),
@@ -110,14 +123,12 @@ class _ProfileScreenState extends State<Profile_Screen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Form fields
                   Padding(
                     padding: EdgeInsets.all(25.w),
                     child: ListView(
                       shrinkWrap: true,
                       physics: NeverScrollableScrollPhysics(),
                       children: [
-                        // Loop through the controllers map to create form fields
                         ..._controllers.keys.map((label) {
                           return Padding(
                             padding: EdgeInsets.symmetric(vertical: 10.h),
@@ -146,7 +157,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
                                   ),
                                   child: TextFormField(
                                     controller: _controllers[label],
-                                    readOnly: true, // Make the text fields read-only
+                                    readOnly: true,
                                     decoration: InputDecoration(
                                       contentPadding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 10.w),
                                       border: OutlineInputBorder(
@@ -171,9 +182,18 @@ class _ProfileScreenState extends State<Profile_Screen> {
                 ],
               ),
             ),
+            if (_isLoading)
+              Center(
+                child: CircularProgressIndicator(),
+              ),
+            if (_hasError)
+              Center(
+                child: Text('Failed to load user data. Please try again later.'),
+              ),
           ],
         ),
       ),
     );
   }
 }
+

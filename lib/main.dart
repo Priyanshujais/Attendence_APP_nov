@@ -6,6 +6,7 @@ import 'package:zarvis_app/pages/home_page/splash_screen.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 
 
+
 void main() {
   runApp(const pages());
 }
@@ -18,7 +19,6 @@ class pages extends StatelessWidget {
     return ScreenUtilInit(
       minTextAdapt: true,
       splitScreenMode: true,
-      // Use builder only if you need to use library outside ScreenUtilInit context
       builder: (_, child) {
         return KeyboardVisibilityProvider(
           child: GetMaterialApp(

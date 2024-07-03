@@ -1,24 +1,25 @@
 import 'dart:convert';
 import 'dart:developer';
-import 'package:simple_month_year_picker/simple_month_year_picker.dart';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:simple_month_year_picker/simple_month_year_picker.dart';
 
 class Calenderscreen extends StatefulWidget {
   const Calenderscreen({Key? key}) : super(key: key);
 
   @override
-  State<Calenderscreen> createState() => _CalenderscreenState();
+  State<Calenderscreen> createState() => _CalendarscreenState();
 }
 
-class _CalenderscreenState extends State<Calenderscreen> {
+class _CalendarscreenState extends State<Calenderscreen> {
   List<Map<String, dynamic>> attendanceData = [];
   DateTime selectedDate = DateTime.now();
-  int empId = 0; // Your employee ID, fetched from SharedPreferences
+  String emp_id = ''; // Your employee ID, fetched from SharedPreferences
   String token = ""; // Your token, fetched from SharedPreferences
+  bool _isLoading = false;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -26,16 +27,35 @@ class _CalenderscreenState extends State<Calenderscreen> {
     loadAttendanceLog();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This method will be called when the dependencies change,
+    // such as when the user navigates to this page
+    if (emp_id.isNotEmpty) {
+      updateAttendanceLog(selectedDate);
+    }
+  }
+
   void loadAttendanceLog() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      empId = prefs.getInt('emp_id') ?? 0;
+      emp_id = prefs.getString('emp_code') ?? '';
       token = prefs.getString('token') ?? '';
+     // log("Loaded emp_id: $emp_id, token: $token");
     });
-    updateAttendanceLog(selectedDate);
+
+    if (emp_id.isNotEmpty) {
+      updateAttendanceLog(selectedDate);
+    }
   }
 
-  void updateAttendanceLog(DateTime date) async {
+  Future<void> updateAttendanceLog(DateTime date) async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
     String apiUrl = 'http://35.154.148.75/zarvis/api/v2/getMonthlyListing';
     String monthKey = DateFormat('MM-yyyy').format(date);
 
@@ -47,9 +67,10 @@ class _CalenderscreenState extends State<Calenderscreen> {
 
     // Prepare request body
     Map<String, dynamic> body = {
-      'emp_id': empId,
+      'emp_id': emp_id,
       'month': monthKey,
     };
+    log("Request body: ${jsonEncode(body)}");
 
     // Make API call
     http.Response response = await http.post(
@@ -58,26 +79,49 @@ class _CalenderscreenState extends State<Calenderscreen> {
       body: jsonEncode(body),
     );
 
+    //log("API response status: ${response.statusCode}");
+    //log("API response body: ${response.body}");
+
     if (response.statusCode == 200) {
       // Parse response JSON
       Map<String, dynamic> jsonResponse = jsonDecode(response.body);
-      List<dynamic> data = jsonResponse['data'];
+      if (jsonResponse['data'] != null) {
+        List<dynamic> data = jsonResponse['data'];
 
-      // Log the received data for debugging
-      print('Received data: ${jsonEncode(data)}');
-
-      // Update attendance data
-      setState(() {
-        attendanceData = List<Map<String, dynamic>>.from(data);
-      });
+        setState(() {
+          attendanceData = List<Map<String, dynamic>>.from(data);
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          attendanceData = [];
+          _isLoading = false;
+        });
+      }
     } else {
       // Handle API error
-      print('API Error: ${response.statusCode}');
       setState(() {
         attendanceData = [];
+        _isLoading = false;
+        _hasError = true;
       });
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Error'),
+          content: const Text('Failed to fetch attendance data. Please try again later.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
+
 
 
   Widget buildAttendanceRecord(Map<String, dynamic> record) {
@@ -85,13 +129,21 @@ class _CalenderscreenState extends State<Calenderscreen> {
     String day = DateFormat('EEEE').format(DateTime.parse(record['date']));
     String date = DateFormat('MMM dd').format(DateTime.parse(record['date']));
     String punchIn = record['punchInDT'] != null
-        ? DateFormat.Hm().format(DateTime.parse(record['punchInDT']))
+        ? DateFormat('hh:mm a').format(DateTime.parse(record['punchInDT']))
         : 'N/A';
-    String punchOut = record['punchOutDT'] != null
-        ? DateFormat.Hm().format(DateTime.parse(record['punchOutDT']))
-        : 'N/A';
-    String totalWorkingTime = record['totalWorkingTime'] ?? '00:00:00';
-    log(record['totalWorkingTime']);
+
+    String punchOut;
+    String totalWorkingTime;
+    if (record['punchOutDT'] == "No Out Time." || record['totalWorkingTime'] == "No Out Time.") {
+      punchOut = 'N/A';
+      totalWorkingTime = 'N/A';
+    } else {
+      punchOut = record['punchOutDT'] != null
+          ? DateFormat('hh:mm a').format(DateTime.parse(record['punchOutDT']))
+          : 'N/A';
+      totalWorkingTime = record['totalWorkingTime'] ?? '00:00:00';
+    }
+
     Color statusColor = Colors.grey; // Default color
 
     // Determine color based on title
@@ -137,7 +189,7 @@ class _CalenderscreenState extends State<Calenderscreen> {
             children: [
               Text(
                 '$day, $date',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -147,7 +199,7 @@ class _CalenderscreenState extends State<Calenderscreen> {
                 ),
                 child: Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -155,20 +207,20 @@ class _CalenderscreenState extends State<Calenderscreen> {
               ),
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Check In: $punchIn',
-            style: TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 14),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             'Check Out: $punchOut',
-            style: TextStyle(fontSize: 14),
+            style: const TextStyle(fontSize: 14),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             'Total Working Hours: $totalWorkingTime',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -180,9 +232,11 @@ class _CalenderscreenState extends State<Calenderscreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Attendance'),
+        title: const Text('My Attendance'),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,10 +245,10 @@ class _CalenderscreenState extends State<Calenderscreen> {
               onTap: () async {
                 final month = await SimpleMonthYearPicker.showMonthYearPickerDialog(
                   context: context,
-                  titleTextStyle: TextStyle(),
+                  titleTextStyle: const TextStyle(),
                   selectionColor: Colors.red,
-                  monthTextStyle: TextStyle(),
-                  yearTextStyle: TextStyle(),
+                  monthTextStyle: const TextStyle(),
+                  yearTextStyle: const TextStyle(),
                   disableFuture: true,
                 );
                 if (month != null) {
@@ -209,10 +263,10 @@ class _CalenderscreenState extends State<Calenderscreen> {
                 children: [
                   Text(
                     DateFormat("MMMM yyyy").format(selectedDate),
-                    style: TextStyle(fontSize: 20),
+                    style: const TextStyle(fontSize: 20),
                   ),
-                  Row(
-                    children: [
+                  const Row(
+                    children:  [
                       Text('Pick a Month'),
                       SizedBox(width: 8),
                       Icon(Icons.calendar_today),
@@ -221,14 +275,17 @@ class _CalenderscreenState extends State<Calenderscreen> {
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            if (attendanceData.isEmpty)
-              Center(child: Text('No attendance records found')),
-            Column(
-              children: attendanceData
-                  .map((record) => buildAttendanceRecord(record))
-                  .toList(),
-            ),
+            const SizedBox(height: 16),
+            if (_hasError)
+              const Center(child: Text('Failed to fetch attendance data. Please try again later.')),
+            if (!_hasError && attendanceData.isEmpty)
+              const Center(child: Text('No attendance records found')),
+            if (!_hasError && attendanceData.isNotEmpty)
+              Column(
+                children: attendanceData
+                    .map((record) => buildAttendanceRecord(record))
+                    .toList(),
+              ),
           ],
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zarvis_app/pages/home_page/DashbordScreen.dart';
 
 class ApplyLeave extends StatefulWidget {
   const ApplyLeave({Key? key}) : super(key: key);
@@ -23,6 +24,9 @@ class _LeaveScreenState extends State<ApplyLeave> {
     'Comp-off',
     'Half Day',
   ];
+
+  bool _isLoading = false;
+  bool _hasError = false;
 
   @override
   void dispose() {
@@ -65,12 +69,16 @@ class _LeaveScreenState extends State<ApplyLeave> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
     final prefs = await SharedPreferences.getInstance();
     String token = prefs.getString('token')!;
     String? empCode = prefs.getString('emp_code');
 
-    final url = Uri.parse(
-        'http://35.154.148.75/zarvis/api/v2/ApplyLeave'); // Replace with your API endpoint
+    final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/ApplyLeave');
     final response = await http.post(
       url,
       headers: <String, String>{
@@ -78,7 +86,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode(<String, String>{
-        'emp_code': empCode.toString(), // Replace with actual emp_code
+        'emp_code': empCode.toString(),
         'leave_from_date': fromDate,
         'leave_to_date': toDate,
         'Subject': subject,
@@ -87,18 +95,26 @@ class _LeaveScreenState extends State<ApplyLeave> {
       }),
     );
 
+    setState(() {
+      _isLoading = false;
+    });
+
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       if (jsonResponse['status'] == '1') {
         _showThankYouDialog();
       } else {
+        setState(() {
+          _hasError = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-              Text('Failed to apply leave: ${jsonResponse['message']}')),
+          SnackBar(content: Text('Failed to apply leave: ${jsonResponse['message']}')),
         );
       }
     } else {
+      setState(() {
+        _hasError = true;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to apply leave')),
       );
@@ -111,13 +127,12 @@ class _LeaveScreenState extends State<ApplyLeave> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("Thank You!"),
-          content: const Text(
-              "Your leave application has been submitted successfully."),
+          content: const Text("Your leave application has been submitted successfully."),
           actions: <Widget>[
             TextButton(
               child: const Text("OK"),
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(Dashbordscreen(token: '', companyId: '', empCode: '', ));
               },
             ),
           ],
@@ -128,8 +143,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
 
   @override
   Widget build(BuildContext context) {
-    ScreenUtil.init(context,
-        designSize: Size(360, 690));
+    ScreenUtil.init(context, designSize: Size(360, 690));
 
     return Scaffold(
       appBar: AppBar(
@@ -278,7 +292,8 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                     ),
                                     readOnly: true,
                                     onTap: () {
-                                      _selectDate(context, _toDateController);
+                                      _selectDate(
+                                          context, _toDateController);
                                     },
                                   ),
                                 ),
@@ -343,7 +358,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
                                 ),
                               ),
                               Expanded(
-                                flex:4,
+                                flex: 4,
                                 child: Container(
                                   height: ScreenUtil().setHeight(40),
                                   decoration: BoxDecoration(
@@ -436,8 +451,10 @@ class _LeaveScreenState extends State<ApplyLeave> {
                           SizedBox(height: ScreenUtil().setHeight(20)),
                           Center(
                             child: ElevatedButton(
-                              onPressed: _submitForm,
-                              child: Text(
+                              onPressed: _isLoading ? null : _submitForm,
+                              child: _isLoading
+                                  ? CircularProgressIndicator()
+                                  : Text(
                                 "Apply",
                                 style: TextStyle(
                                   fontSize: ScreenUtil().setSp(18),
@@ -456,6 +473,16 @@ class _LeaveScreenState extends State<ApplyLeave> {
                               ),
                             ),
                           ),
+                          if (_hasError)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  'Failed to apply leave. Please try again.',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

@@ -12,7 +12,7 @@ import '../Login_pages/signup_screen/sign_up_page.dart';
 import '../home_page/HomeScreen.dart';
 import 'models/login_model.dart';
 
-bool isManager = false;
+bool _isLoading = false;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -27,9 +27,14 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
   double screenHeight = 0.h;
   double screenWidth = 0.w;
+
   Color primary = Colors.redAccent;
 
   Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     String emp_code = idController.text;
     String password = passController.text;
 
@@ -40,6 +45,10 @@ class _LoginScreenState extends State<LoginScreen> {
           'password': password,
         }),
         headers: {'Content-Type': 'application/json'});
+
+    setState(() {
+      _isLoading = false;
+    });
 
     if (response.statusCode == 200) {
       Map<String, dynamic> responsedata = jsonDecode(response.body);
@@ -63,20 +72,23 @@ class _LoginScreenState extends State<LoginScreen> {
         log("Token----$tokenn");
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
+
+        await prefs.setBool('isLoggedIn', true);
         await prefs.setString("token", tokenn!);
         await prefs.setString("emp_name", emp_nqme!);
-        print('this is com_id $companyId');
         await prefs.setString("company_id", companyId.toString());
-        print('this is employee code $empCode');
         await prefs.setString("emp_code", empCode!);
+        await prefs.setString("user_id", UserId.toString()!);
+        await prefs.setString("location_id", locationId.toString()!);
+        await prefs.setString("project_id", projectId.toString()!);
+        await prefs.setString("client_id", clientId.toString()!);
 
         log('Login successful, navigating to home screen');
-
-        // List permissions = responsedata['result']['permissions'];
         List<dynamic> permissions = responsedata['result']['permissions'];
 
         if (permissions.length > 1) {
-          isManager = true;
+          await prefs.setBool('isManager', true);
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -93,7 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         } else {
-          isManager = false;
+          await prefs.setBool('isManager', false);
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -110,13 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
         }
-        // if (!mounted) return;
-        // Navigator.pushReplacement(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (context) => const Homescreen(),
-        //   ),
-        // );
       } else {
         log('Login failed: ${loginModel.message}');
         _showErrorDialog(loginModel.message ?? 'Login failed');
@@ -152,6 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     bool isKeyboardVisible =
     KeyboardVisibilityProvider.isKeyboardVisible(context);
@@ -160,111 +167,119 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            if (!isKeyboardVisible)
-              SizedBox(height: isKeyboardVisible ? 110 : 20),
-            Container(
-              height: screenHeight / 3,
-              width: screenWidth,
-              child: Center(
-                child: Image.asset(
-                  'assets/images/zarvis.png',
-                  width: screenWidth / 1.5,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              children: [
+                if (!isKeyboardVisible)
+                  SizedBox(height: isKeyboardVisible ? 110 : 20),
+                Container(
                   height: screenHeight / 3,
-                ),
-              ),
-            ),
-            Text(
-              "Login",
-              style: TextStyle(
-                fontSize: 24.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: screenHeight / 30),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 32.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  fieldTile("Employee ID"),
-                  customField("Enter your Employee id", idController, false),
-                  fieldTile("Password"),
-                  customField("Enter your Password", passController, true),
-                  SizedBox(height: screenHeight / 50),
-                  GestureDetector(
-                    onTap: _login,
-                    child: Container(
-                      height: 40.h,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: primary,
-                        borderRadius: BorderRadius.all(Radius.circular(32.r)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          "LOGIN",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18.sp,
-                            color: Colors.white,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
+                  width: screenWidth,
+                  child: Center(
+                    child: Image.asset(
+                      'assets/images/zarvis.png',
+                      width: screenWidth / 1.5,
+                      height: screenHeight / 3,
                     ),
                   ),
-                  SizedBox(height: 20.h),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
+                ),
+                Text(
+                  "Login",
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: screenHeight / 30),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 32.w),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      fieldTile("Employee ID"),
+                      customField("Enter your Employee id", idController, false),
+                      fieldTile("Password"),
+                      customField("Enter your Password", passController, true),
+                      SizedBox(height: screenHeight / 50),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ForgetPass(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Forgot Password?',
-                          style: TextStyle(
-                            fontSize: 15.sp,
+                        onTap: _login,
+                        child: Container(
+                          height: 40.h,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
                             color: primary,
-                            fontWeight: FontWeight.bold,
+                            borderRadius: BorderRadius.all(Radius.circular(32.r)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "LOGIN",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18.sp,
+                                color: Colors.white,
+                                letterSpacing: 1,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                      SizedBox(width: 90.w),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SignupScreen(),
+                      SizedBox(height: 20.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ForgetPass(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Forgot Password?',
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                color: primary,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          );
-                        },
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            color: primary,
-                            fontWeight: FontWeight.bold,
                           ),
-                        ),
+                          SizedBox(width: 90.w),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SignupScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                color: primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          if (_isLoading)
+            Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       ),
     );
   }

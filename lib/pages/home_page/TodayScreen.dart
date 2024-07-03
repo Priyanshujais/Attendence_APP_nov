@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,6 +12,8 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slide_to_act/slide_to_act.dart';
+
+import '../../untils/alert_widget.dart';
 
 class Todayscreen extends StatefulWidget {
   String? deviceId;
@@ -56,6 +59,7 @@ class _TodayscreenState extends State<Todayscreen> {
   String emp_name = "";
 
 
+  String token = "";
 
   @override
   void initState() {
@@ -65,6 +69,87 @@ class _TodayscreenState extends State<Todayscreen> {
         Timer.periodic(const Duration(seconds: 1), (Timer t) => updateTime());
     loadAttendanceData();
     getUSerName();
+    getToken();
+
+    // Fetch initialization status when the screen loads
+    fetchInitializationStatus();
+  }
+  void handleError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+  Future<void> fetchInitializationStatus() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v2/initializeStatus'),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          "emp_id": widget.empCode,
+          "token": widget.token,
+        }),
+      ).timeout(Duration(seconds: 10)); // Set timeout duration
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData["status"] == "1" && responseData["message"] == "show in") {
+          // Set state to show "Slide to Check In"
+          setState(() {
+            sliderText = "Slide to Check In";
+            isCheckedIn = false;
+          });
+        } else {
+          // Set state to show "Slide to Check Out"
+          setState(() {
+            sliderText = "Slide to Check Out";
+            isCheckedIn = true;
+          });
+        }
+      } else {
+        throw Exception('Failed to fetch initialization status');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error fetching initialization status: $e'),
+      ));
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
+    }
+  }
+
+  void onSliderAction() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    try {
+      Position position = await fetchUserLocation();
+      String reason = ""; // Modify this to get the actual reason input
+      String workingLocation = "In Office"; // Or get the actual working location input
+
+      if (!isCheckedIn) {
+        await handleCheckIn(position, reason, workingLocation);
+      } else {
+        await handleCheckOut(position, reason, workingLocation);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error during slider action: $e'),
+      ));
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
+    }
   }
 
   void updateTime() {
@@ -83,28 +168,51 @@ class _TodayscreenState extends State<Todayscreen> {
   ///getuser name
   getUSerName() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    emp_name = prefs.getString('emp_name')!;
+
     setState(() {
+      emp_name = prefs.getString('emp_name')!;
       print(emp_name);
     });
   }
-  Future<void> showLocationDialog(bool isCheckingIn) async {
+  Future<void> showLocationDialog(BuildContext context, bool isCheckingIn) async {
+    if (isCheckingIn) {
+      await handleCheckInProcess(context);
+    } else {
+      await showLocationAndMarkAttendance(context, false);
+    }
+  }
+
+  Future<String> fetchLocationDetails(double latitude, double longitude) async {
+    try {
+      List<Placemark> placemarks =
+      await placemarkFromCoordinates(latitude, longitude);
+      Placemark placemark = placemarks.first;
+      print("${placemark.subLocality}, ${placemark.locality}");
+      return "${placemark.subLocality}, ${placemark.locality}";
+    } catch (e) {
+      throw Exception('Error fetching location details');
+    }
+  }
+
+  bool isHandlingCheckIn = false;
+  bool isMissingAttendanceDialogShown = false;
+
+  Future<void> showLocationAndMarkAttendance(BuildContext context, bool isCheckingIn) async {
+    // Check for location permission
     var locationPermissionStatus = await Permission.location.request();
 
     if (locationPermissionStatus.isGranted) {
       Position position = await fetchUserLocation();
-
-      // Fetch the initial address using reverse geocoding
       String initialAddress = await fetchLocationDetails(position.latitude, position.longitude);
+
+      List<Map<String, String>> reports = [];
+      bool reportAdded = false;
 
       showDialog(
         context: context,
         builder: (context) {
           TextEditingController reasonController = TextEditingController();
-          TextEditingController startTimeController = TextEditingController();
-          TextEditingController endTimeController = TextEditingController();
-          TextEditingController taskController = TextEditingController();
-          String selectedLocation = "In Office"; // Default selection
+          String selectedLocation = "In Office";
 
           return StatefulBuilder(
             builder: (context, setState) {
@@ -116,7 +224,7 @@ class _TodayscreenState extends State<Todayscreen> {
                     children: [
                       SizedBox(
                         width: MediaQuery.of(context).size.width * 0.8,
-                        height: MediaQuery.of(context).size.height * 0.4,
+                        height: MediaQuery.of(context).size.height * 0.3,
                         child: Stack(
                           children: [
                             GoogleMap(
@@ -153,38 +261,74 @@ class _TodayscreenState extends State<Todayscreen> {
                                   children: [
                                     const Text(
                                       "Current Location:",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      initialAddress,
-                                      style: const TextStyle(
-                                        color: Colors.grey,
-                                      ),
-                                    ),
+                                    Text(initialAddress, style: const TextStyle(color: Colors.grey)),
                                   ],
                                 ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 16,
+                              right: 16,
+                              child: FloatingActionButton(
+                                mini: true,
+                                onPressed: () async {
+                                  Position newPosition = await fetchUserLocation();
+                                  setState(() {
+                                    position = newPosition;
+                                  });
+                                },
+                                child: const Icon(Icons.my_location),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      DropdownButton<String>(
-                        value: selectedLocation,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            selectedLocation = newValue!;
-                          });
-                        },
-                        items: <String>['In Office', 'Outside of Office']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          width: MediaQuery.of(context).size.width * 0.8,
+                          margin: const EdgeInsets.only(top: 16),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Working Location:",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              DropdownButton<String>(
+                                value: selectedLocation,
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedLocation = newValue!;
+                                  });
+                                },
+                                items: <String>['In Office', 'Outside of Office']
+                                    .map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       TextFormField(
                         controller: reasonController,
@@ -198,28 +342,37 @@ class _TodayscreenState extends State<Todayscreen> {
                           }
                           return null;
                         },
-                        minLines: 3,
-                        maxLines: 5,
+                        minLines: 2,
+                        maxLines: 4,
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          showAddReportDialog(startTimeController, endTimeController, taskController);
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.add),
-                            Text('Add Report'),
-                          ],
+                      if (!isCheckingIn)
+                        ElevatedButton(
+                          onPressed: () {
+                            showAddReportDialog(
+                              context,
+                              reports,
+                                  () {
+                                setState(() {
+                                  reportAdded = true;
+                                });
+                              },
+                            );
+                          },
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.add),
+                              Text('Add Report'),
+                            ],
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
                 actions: <Widget>[
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).pop(false); // Close the dialog with cancel result
+                      Navigator.of(context).pop(false);
                     },
                     child: const Text('Cancel'),
                   ),
@@ -228,18 +381,23 @@ class _TodayscreenState extends State<Todayscreen> {
                       String reason = reasonController.text.trim();
                       bool isValid = reason.isNotEmpty;
 
-                      if (isValid) {
-                        Navigator.of(context).pop(true); // Close the dialog with confirm result
+                      if (isCheckingIn && !isValid) {
+                        showCustomAlert(context, 'Comment is required');
+                        return;
+                      }
 
-                        if (isCheckingIn) {
-                          await handleCheckIn(position, reason, selectedLocation);
-                        } else {
-                          await handleCheckOut(position, reason, selectedLocation);
-                        }
+                      if (!isCheckingIn && (!isValid || !reportAdded)) {
+                        showCustomAlert(context, 'Comment and report are required');
+                        return;
+                      }
+
+                      Navigator.of(context).pop(true);
+
+                      if (isCheckingIn) {
+                        await handleCheckIn(position, reason, selectedLocation);
                       } else {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Comment is required'),
-                        ));
+                        await handleCheckOut(position, reason, selectedLocation);
+                        await createActivity(reports);
                       }
                     },
                     child: const Text('Mark Attendance'),
@@ -251,102 +409,357 @@ class _TodayscreenState extends State<Todayscreen> {
         },
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Location permission is required to continue.'),
-      ));
+      showCustomAlert(context, 'Location permission is required to continue.');
     }
   }
 
-  void showAddReportDialog(TextEditingController startTimeController, TextEditingController endTimeController, TextEditingController taskController) {
+
+  void showAddReportDialog(
+      BuildContext context,
+      List<Map<String, String>> reports,
+      Function onReportAdded,
+      ) {
+    TextEditingController startTimeController = TextEditingController();
+    TextEditingController endTimeController = TextEditingController();
+    TextEditingController taskController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Add Report'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: startTimeController,
-                  decoration: const InputDecoration(
-                    labelText: 'Start Time',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: endTimeController,
-                  decoration: const InputDecoration(
-                    labelText: 'End Time',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: taskController,
-                  decoration: const InputDecoration(
-                    labelText: 'Explain the task you performed',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Task explanation is required';
-                    }
-                    return null;
-                  },
-                  minLines: 3,
-                  maxLines: 5,
-                ),
-              ],
-            ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: startTimeController,
+                decoration: const InputDecoration(labelText: 'Start Time'),
+                onTap: () async {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    startTimeController.text = pickedTime.format(context);
+                  }
+                },
+              ),
+              TextField(
+                controller: endTimeController,
+                decoration: const InputDecoration(labelText: 'End Time'),
+                onTap: () async {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (pickedTime != null) {
+                    endTimeController.text = pickedTime.format(context,);
+                  }
+                },
+              ),
+              TextField(
+                controller: taskController,
+                decoration: const InputDecoration(labelText: 'Task Description'),
+              ),
+            ],
           ),
-          actions: <Widget>[
+          actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                bool isValid = startTimeController.text.isNotEmpty &&
+              onPressed: () {
+                if (startTimeController.text.isNotEmpty &&
                     endTimeController.text.isNotEmpty &&
-                    taskController.text.isNotEmpty;
-
-                if (isValid) {
-                  // Handle adding report logic here
-                  Navigator.of(context).pop(); // Close the dialog
+                    taskController.text.isNotEmpty) {
+                  reports.add({
+                    "start_date_time": startTimeController.text,
+                    "end_date_time": endTimeController.text,
+                    "activity": taskController.text,
+                  });
+                  onReportAdded();
+                  Navigator.of(context).pop();
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Please fill all fields'),
-                  ));
+                  showCustomAlert(context, "All report fields are required");
                 }
               },
-              child: const Text('Add Report'),
+              child: const Text('Add'),
             ),
           ],
         );
       },
     );
   }
+  List<Map<String, String>> reports = [];
+  Future<void> showMissingAttendanceDialog(String date) async {
+    String status = 'absent';
+    TextEditingController remarkController = TextEditingController();
+    TextEditingController startTimeController = TextEditingController();
+    TextEditingController endTimeController = TextEditingController();
 
+    bool? result = await showDialog<bool?>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('To mark today\'s attendance, please fill the previous missing status'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    Text('Date: $date'),
+                    DropdownButtonFormField<String>(
+                      value: status,
+                      items: [
+                        DropdownMenuItem(value: 'absent', child: Text('Absent')),
+                        DropdownMenuItem(value: 'week-off', child: Text('Week-off')),
+                        DropdownMenuItem(value: 'public-holiday', child: Text('Public Holiday')),
+                        DropdownMenuItem(value: 'comp-off', child: Text('Comp-off')),
+                        DropdownMenuItem(value: 'present', child: Text('Present')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            status = value;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(labelText: 'Status'),
+                    ),
+                    if (status == 'present') ...[
+                      Container(
+                        padding: EdgeInsets.all(8.0),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                        child: Column(
+                          children: [
+                            TextField(
+                              controller: startTimeController,
+                              decoration: InputDecoration(
+                                labelText: 'Check-in Time (HH:mm)',
+                                border: OutlineInputBorder(),
+                                hintText: 'Enter check-in time',
+                              ),
+                              readOnly: true,
+                              onTap: () async {
+                                TimeOfDay? pickedTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                );
+                                if (pickedTime != null) {
+                                  startTimeController.text = pickedTime.format(context);
+                                }
+                              },
+                            ),
+                            SizedBox(height: 10),
+                            TextField(
+                              controller: endTimeController,
+                              decoration: InputDecoration(
+                                labelText: 'Check-out Time (HH:mm)',
+                                border: OutlineInputBorder(),
+                                hintText: 'Enter check-out time',
+                              ),
+                              readOnly: true,
+                              onTap: () async {
+                                TimeOfDay? pickedTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                );
+                                if (pickedTime != null) {
+                                  endTimeController.text = pickedTime.format(context);
+                                }
+                              },
+                            ),
+                            SizedBox(height: 10),
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.add, color: Colors.white),
+                              label: Text('Add Report'),
+                              style: ElevatedButton.styleFrom(
+                                foregroundColor: Colors.white, backgroundColor: Colors.red,
+                              ),
+                              onPressed: () {
+                                showAddReportDialog(context, reports, () {});
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: 10),
+                    TextField(
+                      controller: remarkController,
+                      decoration: InputDecoration(
+                        labelText: 'Remark',
+                        border: OutlineInputBorder(),
+                        hintText: 'Enter remarks',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: Text('Next'),
+                  onPressed: () async {
+                    if (status == 'present' && (startTimeController.text.isEmpty || endTimeController.text.isEmpty)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Check-in and Check-out times are required')),
+                      );
+                      return;
+                    }
 
+                    if (remarkController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Remark is required')),
+                      );
+                      return;
+                    }
 
+                    // Close the dialog and update calendar data
+                    Navigator.of(context).pop(true);
 
-  Future<Position> fetchUserLocation() async {
-    try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-    } catch (e) {
-      throw Exception('Error fetching user location: $e');
-    }
+                    await updateCalendarData(date, status, remarkController.text);
+
+                    if (status == 'present') {
+                      await handleCheckInProcess(context);
+                    }
+                  },
+                ),
+                TextButton(
+                  child: Text('Cancel'),
+                  onPressed: () {
+                    Navigator.of(context).pop(false);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    isMissingAttendanceDialogShown = false; // Reset the flag after dialog interaction
   }
 
 
 
+
+  Future<void> createActivity(List<Map<String, String>> reports) async {
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v2/createActivity';
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    if (token == null) {
+      print('No token found. Unable to authenticate request.');
+      return;
+    }
+
+    final DateTime now = DateTime.now();
+    final String currentDate = DateFormat('yyyy-MM-dd').format(now);
+
+    // Construct the data payload
+    List<Map<String, String>> formattedReports = reports.map((report) {
+      String startDateTime = '${currentDate} ${report['start_date_time']}';
+      String endDateTime = '${currentDate} ${report['end_date_time']}';
+      DateTime parsedStartDateTime = DateFormat('yyyy-MM-dd h:mm a').parse(startDateTime);
+      DateTime parsedEndDateTime = DateFormat('yyyy-MM-dd h:mm a').parse(endDateTime);
+      String formattedStartDateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedStartDateTime);
+      String formattedEndDateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedEndDateTime);
+      return {
+        'start_date_time': formattedStartDateTime,
+        'end_date_time': formattedEndDateTime,
+        'activity': report['activity']!,
+      };
+    }).toList();
+
+    // Log the payload for debugging
+    String payload = json.encode({
+      'data': formattedReports,
+      'date': currentDate,
+    });
+    print('Request payload: $payload');
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: payload,
+      ).timeout(Duration(seconds: 10)); // Timeout after 10 seconds
+
+      // Log the response for debugging
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Handle success
+        print('Activity created successfully');
+      } else {
+        // Handle error
+        print('Failed to create activity. Status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
+    } on TimeoutException catch (_) {
+      // Handle timeout exception
+      print('The request timed out.');
+      // Optionally retry or inform the user
+    } on http.ClientException catch (e) {
+      // Handle client exceptions (e.g., network issues)
+      print('Client exception: $e');
+    } catch (e) {
+      // Handle other exceptions
+      print('An error occurred: $e');
+    }
+  }
+  Future<void> handleCheckInProcess(BuildContext context) async {
+    try {
+      final position = await fetchUserLocation();
+      bool shouldProceed = false;
+
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v2/checkPreviousOneWeekStatus'),
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: {"emp_id": widget.empCode, "token": widget.token},
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData["status"] == "0" && responseData["message"] == "no data") {
+          if (!isMissingAttendanceDialogShown) {
+            isMissingAttendanceDialogShown = true;
+            await showMissingAttendanceDialog(responseData["date"]);
+            return;
+          }
+        } else if (responseData["status"] == "1" && responseData["message"] == "go ahead") {
+          shouldProceed = true;
+        } else {
+          throw Exception('Unexpected response from checkPreviousOneWeekStatus API');
+        }
+      } else {
+        throw Exception('Failed to check previous attendance');
+      }
+
+      if (shouldProceed) {
+        await showLocationAndMarkAttendance(context, true);
+      }
+    } catch (e) {
+      handleError('Error checking in: $e');
+    }
+  }
+
+
   Future<void> handleCheckIn(Position position, String reason, String workingLocation) async {
+    if (isHandlingCheckIn) return;
+    isHandlingCheckIn = true;
+
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -355,9 +768,6 @@ class _TodayscreenState extends State<Todayscreen> {
       String checkInDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
       String checkInLocationString = await fetchLocationDetails(position.latitude, position.longitude);
 
-
-
-      // API body
       final checkInBody = {
         "device_id": widget.deviceId,
         "emp_code": widget.empCode,
@@ -372,7 +782,7 @@ class _TodayscreenState extends State<Todayscreen> {
         "punch_in_remark": reason,
         "working_location": workingLocation,
         "punch_in_date_time": checkInDate,
-        "attendancedate": checkInDate, //attendancedate
+        "attendancedate": checkInDate,
         "attendance_manager_remark": "",
         "in_geofence": "yes",
       };
@@ -414,23 +824,87 @@ class _TodayscreenState extends State<Todayscreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error checking in: $e'),
       ));
+    } finally {
+      isHandlingCheckIn = false;
+    }
+  }
+  bool _isLoading = false;
+  Future<void> updateCalendarData(String date, String status, String remark) async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String emp_code = prefs.getString('emp_code') ?? "";
+    String token = prefs.getString("token") ?? '';
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v2/updateCalenderData'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'emp_code': emp_code,
+          'date': date,
+          'client_id': widget.clientId,
+          'project_code': widget.projectCode,
+          'location_id': widget.locationId,
+          'status': status,
+          'remark': remark,
+        }),
+      ).timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Attendance marked successfully')),
+        );
+      } else {
+        handleError('Failed to update calendar data');
+      }
+    } catch (e) {
+      handleError('Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
     }
   }
 
-  Future<void> handleCheckOut(Position position, String reason, String workingLocation) async {
+
+  Future<Position> fetchUserLocation() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      throw Exception('Error fetching user location: $e');
+    }
+  }
+
+  getToken()async{
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+     token = prefs.getString('token')!;
+    });
+  }
+
+  Future<void> handleCheckOut(
+      Position position, String reason, String workingLocation) async {
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
       String checkOutTimeString = DateFormat('hh:mm a').format(now);
       String checkOutDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkOutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
+      String checkOutLocationString =
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       // Calculate duration between check-in and check-out
-      DateTime lastCheckedDate = DateTime.parse(prefs.getString('lastCheckedDate') ?? now.toString());
+      DateTime lastCheckedDate = DateTime.parse(prefs.getString('checkInDate') ?? now.toString());
       Duration duration = now.difference(lastCheckedDate);
       String totalDuration = formatDuration(duration);
-      String checkoutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
 
       // API body
       final checkOutBody = {
@@ -442,19 +916,19 @@ class _TodayscreenState extends State<Todayscreen> {
         "company_id": widget.companyId,
         "punch_out_lat": position.latitude.toString(),
         "punch_out_long": position.longitude.toString(),
-        "punch_out_address":checkoutLocationString,
+        "punch_out_address": checkOutLocationString,
         "punch_out_remark": reason,
         "working_location": workingLocation,
         "punch_out_date_time": checkOutDate,
         "attendancedate": checkOutDate,
-        "in_geofence":  "yes"
+        "in_geofence": "yes"
       };
 
       final response = await http.post(
         Uri.parse('http://35.154.148.75/zarvis/api/v2/empSignOut'),
         headers: {
           "Content-Type": "application/json",
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode(checkOutBody),
       );
@@ -468,13 +942,16 @@ class _TodayscreenState extends State<Todayscreen> {
             isCheckedIn = false;
             sliderText = "Slide to Check In";
             this.workingLocation = workingLocation;
+            totalHoursWorked = totalDuration; // Update total hours worked
           });
 
           await prefs.setString('checkOutTime', checkOutTimeString);
           await prefs.setString('checkOutDate', checkOutDate);
           await prefs.setString('checkOutLocation', checkOutLocationString);
           await prefs.setBool('isCheckedIn', false);
+          await prefs.setString('totalHoursWorked', totalDuration); // Save total hours worked
         } else {
+          log(responseData["message"]);
           throw Exception(responseData["message"]);
         }
       } else {
@@ -486,49 +963,9 @@ class _TodayscreenState extends State<Todayscreen> {
       ));
     }
   }
-
-
   bool isDayCompleted = false;
 
 
-  Future<String> fetchLocationDetails(double latitude, double longitude) async {
-    try {
-      List<Placemark> placemarks =
-      await placemarkFromCoordinates(latitude, longitude);
-      Placemark placemark = placemarks.first;
-      print("${placemark.subLocality}, ${placemark.locality}");
-      return "${placemark.subLocality}, ${placemark.locality}";
-    } catch (e) {
-      throw Exception('Error fetching location details');
-    }
-  }
-
-  // bool isLocationAtOffice(double latitude, double longitude) {
-  //   double distanceInMeters = Geolocator.distanceBetween(
-  //     officeLatitude,
-  //     officeLongitude,
-  //     latitude,
-  //     longitude,
-  //   );
-  //   return distanceInMeters <= officeRadius;
-  // }
-
-  void resetTimes() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-
-    setState(() {
-      checkInTime = "--/--";
-      checkOutTime = "--/--";
-      checkInLocation = "--";
-      checkOutLocation = "--";
-      totalWorkedDuration = Duration.zero;
-      totalHoursWorked = "00:00:00";
-      isCheckedIn = false;
-      sliderText = "Slide to Check In";
-      workingLocation = "--";
-    });
-  }
 
   void loadAttendanceData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -697,7 +1134,9 @@ class _TodayscreenState extends State<Todayscreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: 10,),
+                SizedBox(
+                  height: 10,
+                ),
                 Container(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -705,14 +1144,19 @@ class _TodayscreenState extends State<Todayscreen> {
                     style: TextStyle(fontSize: screenWidth / 18.w),
                   ),
                 ),
-                SizedBox(height: 10,),
+                SizedBox(
+                  height: 10,
+                ),
                 Container(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     "Total Hours Worked: $totalHoursWorked",
                     style: TextStyle(fontSize: screenWidth / 18.w),
                   ),
-                ), SizedBox(height: 10,),
+                ),
+                SizedBox(
+                  height: 10,
+                ),
                 Container(
                   alignment: Alignment.centerLeft,
                   margin: const EdgeInsets.only(bottom: 16),
@@ -738,10 +1182,10 @@ class _TodayscreenState extends State<Todayscreen> {
                     onSubmit: () {
                       if (isCheckedIn) {
                         showLocationDialog(
-                            false); // Show location dialog for check-out
+                            context, false); // Show location dialog for check-out
                       } else {
                         showLocationDialog(
-                            true); // Show location dialog for check-in
+                            context,true); // Show location dialog for check-in
                       }
                     },
                     height: 60.h,
@@ -758,6 +1202,10 @@ class _TodayscreenState extends State<Todayscreen> {
                         color: Colors.green,
                       ),
                     ),
+                  ),
+                if (_isLoading)
+                  Center(
+                    child: CircularProgressIndicator(),
                   ),
               ],
             ),

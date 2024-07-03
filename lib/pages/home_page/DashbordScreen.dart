@@ -18,16 +18,16 @@ import 'Dashboard/manager/TeamReport.dart';
 import 'Dashboard/profile_screen.dart';
 
 class Dashbordscreen extends StatefulWidget {
-String empCode;
+  String empCode;
 
-String companyId;
-String token;
-   Dashbordscreen({
-     super.key,
-      required this.token,
+  String companyId;
+  String token;
+  Dashbordscreen({
+    super.key,
+    required this.token,
 
-     required this.companyId,
-     required this.empCode});
+    required this.companyId,
+    required this.empCode});
 
   @override
   State<Dashbordscreen> createState() => _DashbordscreenState();
@@ -38,6 +38,8 @@ class _DashbordscreenState extends State<Dashbordscreen> {
   double screenWidth = 0.w;
   String emp_name = "";
   String greeting = "";
+  bool isManager = false;
+
 
   void handleNavigation(String menuItem) async {
     // Implement navigation based on menu item
@@ -62,12 +64,12 @@ class _DashbordscreenState extends State<Dashbordscreen> {
         break;
 
       case "Logout":
-        // Perform logout logic
+      // Perform logout logic
         await logoutUser();
         break;
     }
   }
- void handleNavigation2(String Managermenu) async {
+  void handleNavigation2(String Managermenu) async {
     // Implement navigation based on menu item
     switch (Managermenu) {
       case "Profile":
@@ -88,19 +90,19 @@ class _DashbordscreenState extends State<Dashbordscreen> {
       case "App rating":
         Navigator.push(context, MaterialPageRoute(builder: (context) => const AppRating()));
         break;
-        case "Team attendance":
+      case "Team attendance":
         Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamattendance()));
         break;
-        case "Manager Leave Apporval":
+      case "Manager Leave Apporval":
         Navigator.push(context, MaterialPageRoute(builder: (context) =>  ManagerLeaveApproval(
-          )));
+        )));
         break;case "Team Report ":
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamreport()));
-        break;case "Emp Leave Calender":
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const EventCalendar()));
-        break;
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const Teamreport()));
+      break;case "Emp Leave Calender":
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const EventCalendar()));
+      break;
       case "Logout":
-        // Perform logout logic
+      // Perform logout logic
         await logoutUser();
         break;
     }
@@ -111,6 +113,7 @@ class _DashbordscreenState extends State<Dashbordscreen> {
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
       String? token = prefs.getString('token');
       print('Token: $token');
 
@@ -135,12 +138,23 @@ class _DashbordscreenState extends State<Dashbordscreen> {
         // Clear SharedPreferences on successful logout
         prefs.remove('token');
         prefs.remove('emp_name');
+        prefs.remove('emp_code');
+        prefs.remove('project_id');
+        prefs.remove('location_id');
+        prefs.remove('first_name');
+        prefs.remove('last_name');
+        prefs.remove('phone_no');
+        prefs.remove('desg_code');
+        prefs.remove('emp_doj');
+        prefs.remove('user_id');
+        //  "punch_in_date_time": checkInDate,
+        prefs.remove('checkInDate');
 
         // Navigate to LoginScreen
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
         );
       } else {
         print('Failed to logout: ${response.statusCode}');
@@ -163,6 +177,7 @@ class _DashbordscreenState extends State<Dashbordscreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     emp_name = prefs.getString('emp_name') ??
         ""; // Get employee name from SharedPreferences
+    isManager = await prefs.getBool('isManager')!;
     setGreeting(); // Set the greeting based on the current time
     setState(() {
       // Set state to update UI with employee name and greeting
@@ -190,163 +205,163 @@ class _DashbordscreenState extends State<Dashbordscreen> {
         child: isManager == true
             ?
 
-            ///manager
-            Scaffold(
-                body: SizedBox(
-                  width: screenWidth,
-                  height: screenHeight,
-                  child: Stack(
+        ///manager
+        Scaffold(
+          body: SizedBox(
+            width: screenWidth,
+            height: screenHeight,
+            child: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.only(
+                      top: 15, left: 15, right: 15, bottom: 1),
+                  width: screenWidth.w,
+                  height: screenHeight / 1.h,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.only(
+                      bottomRight: Radius.circular(70),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.only(
-                            top: 15, left: 15, right: 15, bottom: 1),
-                        width: screenWidth.w,
-                        height: screenHeight / 1.h,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(70),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(child: const SizedBox(height: 40)),
-                            Text(
-                              "$greeting, \n$emp_name\nmanager", // Display greeting and employee name
-                              style: const TextStyle(
-                                fontSize: 35,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          height: screenHeight / 1.7.h,
-                          width: screenWidth.w,
-                          padding: const EdgeInsets.only(top: 0, bottom: 0),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(70),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                top: 20, left: 15, right: 15),
-                            child: SingleChildScrollView(
-                              child: GridView.builder(
-                                itemCount: Managermenu.length,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  childAspectRatio: 1.1,
-                                  crossAxisSpacing: 15,
-                                  mainAxisSpacing: 15,
-                                ),
-                                itemBuilder: (context, index) {
-                                  return AnimatedIconTile(
-                                    icon: ManagermenuIcons[index],
-                                    color: ManagermenuColors[index],
-                                    label: Managermenu[index],
-                                    onTap: () => handleNavigation2(Managermenu[index]),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
+                      Center(child: const SizedBox(height: 40)),
+                      Text(
+                        "$greeting, \n$emp_name\nmanager", // Display greeting and employee name
+                        style: const TextStyle(
+                          fontSize: 35,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
                 ),
-              )
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    height: screenHeight / 1.7.h,
+                    width: screenWidth.w,
+                    padding: const EdgeInsets.only(top: 0, bottom: 0),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(70),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          top: 20, left: 15, right: 15),
+                      child: SingleChildScrollView(
+                        child: GridView.builder(
+                          itemCount: Managermenu.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.1,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                          ),
+                          itemBuilder: (context, index) {
+                            return AnimatedIconTile(
+                              icon: ManagermenuIcons[index],
+                              color: ManagermenuColors[index],
+                              label: Managermenu[index],
+                              onTap: () => handleNavigation2(Managermenu[index]),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
             :
 
-            ///emp
-            Scaffold(
-                body: SizedBox(
-                  width: screenWidth,
-                  height: screenHeight,
-                  child: Stack(
+        ///emp
+        Scaffold(
+          body: SizedBox(
+            width: screenWidth,
+            height: screenHeight,
+            child: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.only(
+                      top: 15, left: 15, right: 15, bottom: 1),
+                  width: screenWidth.w,
+                  height: screenHeight / 1.h,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.only(
+                      bottomRight: Radius.circular(70),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.only(
-                            top: 15, left: 15, right: 15, bottom: 1),
-                        width: screenWidth.w,
-                        height: screenHeight / 1.h,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.only(
-                            bottomRight: Radius.circular(70),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Center(child: const SizedBox(height: 40)),
-                            Text(
-                              "$greeting ,\n$emp_name", // Display greeting and employee name
-                              style: const TextStyle(
-                                fontSize: 35,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            // SizedBox(height: 4),
-                          ],
+                      Center(child: const SizedBox(height: 40)),
+                      Text(
+                        "$greeting ,\n$emp_name", // Display greeting and employee name
+                        style: const TextStyle(
+                          fontSize: 35,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Container(
-                          height: screenHeight / 1.7.h,
-                          width: screenWidth.w,
-                          padding: const EdgeInsets.only(top: 0, bottom: 0),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(70),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                                top: 20, left: 15, right: 15),
-                            child: SingleChildScrollView(
-                              child: GridView.builder(
-                                itemCount: menu.length,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  childAspectRatio: 1.1,
-                                  crossAxisSpacing: 15,
-                                  mainAxisSpacing: 15,
-                                ),
-                                itemBuilder: (context, index) {
-                                  return AnimatedIconTile(
-                                    icon: menuIcons[index],
-                                    color: menuColors[index],
-                                    label: menu[index],
-                                    onTap: () => handleNavigation(menu[index]),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      // SizedBox(height: 4),
                     ],
                   ),
                 ),
-              ));
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    height: screenHeight / 1.7.h,
+                    width: screenWidth.w,
+                    padding: const EdgeInsets.only(top: 0, bottom: 0),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(70),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                          top: 20, left: 15, right: 15),
+                      child: SingleChildScrollView(
+                        child: GridView.builder(
+                          itemCount: menu.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.1,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                          ),
+                          itemBuilder: (context, index) {
+                            return AnimatedIconTile(
+                              icon: menuIcons[index],
+                              color: menuColors[index],
+                              label: menu[index],
+                              onTap: () => handleNavigation(menu[index]),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ));
   }
 }
 
