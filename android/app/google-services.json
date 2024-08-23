@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "892994009358",
+    "project_id": "zarivs-21035",
+    "storage_bucket": "zarivs-21035.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:892994009358:android:4821810be5c446a1567f5f",
+        "android_client_info": {
+          "package_name": "com.example.zarvis_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDV8hoAgqAVAizdj1GSrTtgL-YEZ09MWbw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

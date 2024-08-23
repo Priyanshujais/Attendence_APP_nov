@@ -46,8 +46,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       String? empCode =prefs.getString("empCode");
       String? clientId =prefs.getString("clientId");
 
-
-
       bool? isLoggedIn = prefs.getBool('isLoggedIn');
 
       if (isLoggedIn != null) {
@@ -92,29 +90,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            Image.asset(
-              'assets/images/background.jpeg',
-              fit: BoxFit.cover,
-              width: MediaQuery.of(context).size.width,
-              height: MediaQuery.of(context).size.height,
-            ),
-            Center(
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Image.asset(
-                  'assets/images/zarvis.png',
-                  width: 200.w,
-                  height: 200.h,
-                ),
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: [
+          Image.asset(
+            'assets/images/background.jpeg',
+            fit: BoxFit.cover,
+            width: MediaQuery.of(context).size.width,
+            height: MediaQuery.of(context).size.height,
+          ),
+          Center(
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: Image.asset(
+                'assets/images/zarvis.png',
+                width: 200.w,
+                height: 200.h,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

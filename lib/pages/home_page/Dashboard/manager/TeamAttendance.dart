@@ -26,6 +26,7 @@ class _TeamattendanceState extends State<Teamattendance> {
   String projectResponse = '';
   String locationResponse = '';
   String errorMessage = '';
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -34,6 +35,9 @@ class _TeamattendanceState extends State<Teamattendance> {
   }
 
   Future<void> fetchClientList() async {
+    setState(() {
+      isLoading = true; // Set loading state to true when starting to fetch data
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token');
@@ -45,13 +49,14 @@ class _TeamattendanceState extends State<Teamattendance> {
 
       if (token != null && companyId != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v2/clientList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v3/clientList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
           },
           body: jsonEncode({
             'comp_id': companyId,
+            'rm_emp_code': empCode,
           }),
         );
 
@@ -90,13 +95,21 @@ class _TeamattendanceState extends State<Teamattendance> {
       });
       print('Error fetching clients: $e');
     }
+    finally {
+      setState(() {
+        isLoading = false; // Set loading state to false once data is fetched
+      });
+    }
   }
 
   Future<void> fetchProjects(String clientId) async {
+    setState(() {
+      isLoading = true; // Set loading state to true when starting to fetch data
+    });
     try {
       if (token != null && empCode != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v2/projectList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v3/projectList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -127,8 +140,8 @@ class _TeamattendanceState extends State<Teamattendance> {
               Get.snackbar(
                 "Warning !",
                 message,
-                backgroundColor: Colors.red,
-                colorText: Colors.white,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
               );
               throw Exception(" status 0  Error fetching clients + You are not associated with this client, kindly select relevant Client !");
             });
@@ -156,13 +169,21 @@ class _TeamattendanceState extends State<Teamattendance> {
       });
       print('Error fetching projects: $e');
     }
+    finally {
+      setState(() {
+        isLoading = false; // Set loading state to false once data is fetched
+      });
+    }
   }
 
   Future<void> fetchLocations(String projectId) async {
+    setState(() {
+      isLoading = true; // Set loading state to true when starting to fetch data
+    });
     try {
       if (token != null && empCode != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v2/locationList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v3/locationList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -211,6 +232,11 @@ class _TeamattendanceState extends State<Teamattendance> {
       });
       print('Error fetching locations: $e');
     }
+    finally {
+      setState(() {
+        isLoading = false; // Set loading state to false once data is fetched
+      });
+    }
   }
 
   @override
@@ -223,7 +249,11 @@ class _TeamattendanceState extends State<Teamattendance> {
         ),
         backgroundColor: Colors.red,
       ),
-      body: Center(
+      body:isLoading
+    ? Center(child: CircularProgressIndicator()) // Show loading indicator
+        :
+     Center( // Show error message
+
         child: Stack(
           children: [
             Positioned.fill(

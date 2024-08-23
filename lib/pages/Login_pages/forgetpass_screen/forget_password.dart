@@ -1,7 +1,8 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+
+import '../LoginScreen.dart';
 
 class ForgetPass extends StatefulWidget {
   const ForgetPass({super.key});
@@ -14,9 +15,6 @@ class _ForgetPassState extends State<ForgetPass> {
   TextEditingController idController = TextEditingController();
   TextEditingController emailController = TextEditingController();
 
-  double screenHeight = 0;
-  double screenWidth = 0;
-
   Future<void> _forgetPassword() async {
     String empId = idController.text;
     String email = emailController.text;
@@ -27,7 +25,7 @@ class _ForgetPassState extends State<ForgetPass> {
     }
 
     try {
-      var url = Uri.parse('http://35.154.148.75/zarvis/api/v2/forgetPassword');
+      var url = Uri.parse('http://35.154.148.75/zarvis/api/v3/forgetPassword');
       var response = await http.post(
         url,
         body: jsonEncode({
@@ -82,8 +80,15 @@ class _ForgetPassState extends State<ForgetPass> {
           content: Text(message),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('OK'),
+              child: const Text("OK"),
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => LoginScreen(),
+                  ),
+                      (Route<dynamic> route) => false,
+                );
+              },
             ),
           ],
         );
@@ -93,59 +98,51 @@ class _ForgetPassState extends State<ForgetPass> {
 
   @override
   Widget build(BuildContext context) {
-    screenHeight = MediaQuery.of(context).size.height;
-    screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              height: screenHeight / 2.7,
-              width: screenWidth / 2.0,
-              decoration: const BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.only(
-                  bottomRight: Radius.circular(80),
+        child: Padding(
+          padding: EdgeInsets.all(16.0), // Added padding for better layout
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                height: MediaQuery.of(context).size.height * 0.35,
+                decoration: const BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.only(
+                    bottomRight: Radius.circular(80),
+                  ),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/images/zarvis.png',
+                    width: MediaQuery.of(context).size.height * 0.25,
+                    height: MediaQuery.of(context).size.height * 0.25,
+                  ),
                 ),
               ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/zarvis.png',
-                  width: screenHeight / 3,
-                  height: screenHeight / 1,
-                ),
-              ),
-            ),
-            Container(
-              margin: EdgeInsets.only(
-                top: screenWidth / 25,
-                bottom: screenHeight / 20,
-              ),
-              child: Text(
+              SizedBox(height: 20),
+              Text(
                 "Forget Password",
                 style: TextStyle(
-                  fontSize: screenWidth / 18,
+                  fontSize: MediaQuery.of(context).size.width * 0.05,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            Container(
-              alignment: Alignment.centerLeft,
-              margin: EdgeInsets.symmetric(horizontal: screenWidth / 12),
-              child: Column(
+              SizedBox(height: 20),
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   fieldTile("Employee ID"),
-                  customField("Enter your Employee id", idController, false),
+                  customField("Enter your Employee ID", idController, false, Icons.person), // Updated icon here
                   fieldTile("Email"),
-                  customField("Enter your Email", emailController, false),
+                  customField("Enter your Email", emailController, false, Icons.email_outlined),
                   GestureDetector(
                     onTap: _forgetPassword,
                     child: Container(
                       height: 60,
-                      width: screenWidth,
-                      margin: EdgeInsets.only(top: screenHeight / 40),
+                      width: double.infinity, // Changed to double.infinity for full width
+                      margin: const EdgeInsets.only(top: 20),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(32),
@@ -155,7 +152,7 @@ class _ForgetPassState extends State<ForgetPass> {
                           "Submit",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: screenWidth / 26,
+                            fontSize: MediaQuery.of(context).size.width * 0.04,
                             color: Colors.white,
                             letterSpacing: 1,
                           ),
@@ -165,31 +162,29 @@ class _ForgetPassState extends State<ForgetPass> {
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget fieldTile(String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
         style: TextStyle(
-          fontSize: screenWidth / 20,
+          fontSize: MediaQuery.of(context).size.width * 0.04,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget customField(
-      String hint, TextEditingController controller, bool obscure) {
+  Widget customField(String hint, TextEditingController controller, bool obscure, IconData icon) {
     return Container(
-      width: screenWidth,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16), // Added side margins
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -203,30 +198,27 @@ class _ForgetPassState extends State<ForgetPass> {
       ),
       child: Row(
         children: [
-          Container(
-            width: screenWidth / 8,
+          Padding(
+            padding: const EdgeInsets.all(12.0),
             child: Icon(
-              Icons.email_outlined,
+              icon,
               color: Colors.red,
-              size: screenWidth / 15,
+              size: MediaQuery.of(context).size.width * 0.06,
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(right: screenWidth / 15),
-              child: TextFormField(
-                controller: controller,
-                enableSuggestions: false,
-                autocorrect: false,
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: screenHeight / 35,
-                  ),
-                  border: InputBorder.none,
-                  hintText: hint,
+            child: TextFormField(
+              controller: controller,
+              enableSuggestions: false,
+              autocorrect: false,
+              decoration: InputDecoration(
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: MediaQuery.of(context).size.height * 0.02,
                 ),
-                maxLines: 1,
+                border: InputBorder.none,
+                hintText: hint,
               ),
+              maxLines: 1,
             ),
           ),
         ],

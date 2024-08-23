@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../LoginScreen.dart';
+
 class RegisterScreen extends StatefulWidget {
-  String emp_code;
-  String comp_id;
-    RegisterScreen({Key? key,required this.comp_id,required this.emp_code}) : super(key: key);
+  final String emp_code;
+  final String comp_id;
+
+  RegisterScreen({Key? key, required this.comp_id, required this.emp_code})
+      : super(key: key);
 
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
@@ -30,20 +34,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _fetchData();
     _fetchShifts();
   }
+  String? _userId;
 
   Future<void> _fetchData() async {
     try {
-      // Fetch user data from the provided API
       final userResponse = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v2/verifyEmployee',),
-        body: json.encode({'emp_code': widget.emp_code, 'comp_id':widget.comp_id}),
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/verifyEmployee'),
+        body: json
+            .encode({'emp_code': widget.emp_code, 'comp_id': widget.comp_id}),
         headers: {'Content-Type': 'application/json'},
       );
 
       if (userResponse.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(userResponse.body);
-        print(userResponse.statusCode);
-        print(data);
         if (data['status'] == "1" && data['flag'] == "2") {
           final userDetails = data['emp_data'];
 
@@ -54,11 +57,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               "${userDetails['first_name']} ${userDetails['last_name']}";
           _controllers['Employee id']?.text = userDetails['emp_code'] ?? '';
           _controllers['Role']?.text = userDetails['desg_name'] ?? '';
+          _userId = userDetails['user_id'].toString();
 
-          // Update the state to refresh the UI
-          setState(() {
-            print('User data fetched: $data');
-          });
+
+          setState(() {});
         } else {
           _showDialog('Error', 'User data not found.');
         }
@@ -66,21 +68,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _showDialog('Error', 'Failed to load user data.');
       }
     } catch (e) {
-      print('Error: $e');
       _showDialog('Error', 'An error occurred while fetching user data.');
     }
   }
 
   Future<void> _fetchShifts() async {
-    // Fetch shifts data from the provided API
     try {
-      final response = await http.get(
-        Uri.parse('http://35.154.148.75/zarvis/api/v2/shiftList'),
-      );
+      final response = await http
+          .get(Uri.parse('http://35.154.148.75/zarvis/api/v3/shiftList'));
 
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
-        print('Shifts data fetched: $data');
         if (data['status'] == "1") {
           setState(() {
             shifts =
@@ -96,14 +94,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _showDialog('Error', 'Failed to load shifts data.');
       }
     } catch (e) {
-      print('Error: $e');
       _showDialog('Error', 'An error occurred while fetching shifts data.');
     }
   }
 
+
   Future<void> _handleSubmit() async {
-    // Handle form submission logic here
-    // You can access the form values using _controllers
     String company = _controllers['Company']!.text;
     String project = _controllers['Project']!.text;
     String fullName = _controllers['Full Name']!.text;
@@ -111,16 +107,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String shift = _controllers['Shift']!.text;
     String role = _controllers['Role']!.text;
 
-    print(
-        'Submitting form: Company: $company, Project: $project, Full Name: $fullName, Employee ID: $employeeId, Shift: $shift, Role: $role');
+    if (shift.isEmpty) {
+      _showDialog(
+        'Shift Code Missing',
+        'Please select a shift code before submitting.',
+        isSuccess: false,
+      );
+      return; // Exit the method early since shift is required
+    }
 
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v2/register'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/register'),
         body: json.encode({
           'emp_code': employeeId,
           'device_id': 'device_id',
-          'emp_id': 'emp_id',
+          'emp_id': _userId,
           'shift_code': shift,
           'first_name': fullName.split(' ')[0],
         }),
@@ -129,21 +131,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        print('Registration response: $responseData');
-        _showDialog('Registration Status', responseData['message']);
+        _showDialog(
+          'Registration Status',
+          responseData['message'],
+          isSuccess: true, // Indicate success to navigate to login
+        );
       } else {
-        print('Registration failed with status: ${response.statusCode}');
         _showDialog('Registration Failed',
-            'Failed to register. Please try again later.');
+            'Failed to register. Please try again later.',
+            isSuccess: false);
       }
     } catch (e) {
-      print('Error: $e');
       _showDialog(
-          'Registration Failed', 'An error occurred. Please try again later.');
+          'Registration Failed', 'An error occurred. Please try again later.',
+          isSuccess: false);
     }
   }
 
-  void _showDialog(String title, String content) {
+  void _showDialog(String title, String content, {bool isSuccess = false}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -152,10 +157,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           content: Text(content),
           actions: <Widget>[
             TextButton(
+              child: const Text("OK"),
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the dialog
+                if (isSuccess) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => LoginScreen(),
+                    ),
+                        (Route<dynamic> route) => false,
+                  );
+                }
               },
-              child: const Text('OK'),
             ),
           ],
         );
@@ -174,150 +187,152 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       body: Padding(
         padding: EdgeInsets.all(20.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Image.asset(
-                "assets/images/zarvis.png",
-                height: 80.h,
-                width: 80.w,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Image.asset(
+                  "assets/images/zarvis.png",
+                  height: 80.h,
+                  width: 80.w,
+                ),
               ),
-            ),
-            SizedBox(height: 20.h),
-            ..._controllers.keys.map((label) {
-              if (label == 'Shift') {
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
+              SizedBox(height: 20.h),
+              ..._controllers.keys.map((label) {
+                if (label == 'Shift') {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 5.h),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: DropdownButtonFormField<String>(
-                          value: _controllers[label]?.text.isEmpty ?? true
-                              ? null
-                              : _controllers[label]?.text,
-                          onChanged: (value) {
-                            setState(() {
-                              _controllers[label]?.text = value!;
-                            });
-                          },
-                          items: [
-                            const DropdownMenuItem(
-                              value: '', // Empty value for initial state
-                              child: Text('Select Shift'),
-                            ),
-                            ...shifts.map(
-                              (shift) => DropdownMenuItem<String>(
-                                value: shift["shift_code"],
-                                child: Text(shift["shift_name"]!),
+                        SizedBox(height: 5.h),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
                               ),
-                            )
-                          ],
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 10.h, horizontal: 10.w),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide.none,
-                            ),
-                            hintText: 'Select Shift',
-                            hintStyle: TextStyle(
-                              fontSize: 12.sp,
+                            ],
+                          ),
+                          child: DropdownButtonFormField<String>(
+                            value: _controllers[label]?.text.isEmpty ?? true
+                                ? null
+                                : _controllers[label]?.text,
+                            onChanged: (value) {
+                              setState(() {
+                                _controllers[label]?.text = value!;
+                              });
+                            },
+                            items: [
+                              const DropdownMenuItem(
+                                value: '', // Empty value for initial state
+                                child: Text('Select Shift'),
+                              ),
+                              ...shifts.map(
+                                (shift) => DropdownMenuItem<String>(
+                                  value: shift["shift_code"],
+                                  child: Text(shift["shift_name"]!),
+                                ),
+                              )
+                            ],
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(
+                                  vertical: 10.h, horizontal: 10.w),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              hintText: 'Select Shift',
+                              hintStyle: TextStyle(
+                                fontSize: 12.sp,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              } else {
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.bold,
+                      ],
+                    ),
+                  );
+                } else {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 5.h),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          readOnly: label !=
-                              'Shift', // Make text field non-editable except for 'Shift'
-                          controller: _controllers[label],
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 10.h, horizontal: 10.w),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              borderSide: BorderSide.none,
-                            ),
-                            hintText: 'Enter your $label',
-                            hintStyle: TextStyle(
-                              fontSize: 12.sp,
+                        SizedBox(height: 5.h),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 6,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            readOnly: label !=
+                                'Shift', // Make text field non-editable except for 'Shift'
+                            controller: _controllers[label],
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.symmetric(
+                                  vertical: 10.h, horizontal: 10.w),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                borderSide: BorderSide.none,
+                              ),
+                              hintText: 'Enter your $label',
+                              hintStyle: TextStyle(
+                                fontSize: 12.sp,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  );
+                }
+              }).toList(),
+              SizedBox(height: 10.h),
+              Center(
+                child: ElevatedButton(
+                  onPressed: _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 100.w, vertical: 12.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    backgroundColor: Colors.red,
                   ),
-                );
-              }
-            }).toList(),
-            SizedBox(height: 10.h),
-            Center(
-              child: ElevatedButton(
-                onPressed: _handleSubmit,
-                style: ElevatedButton.styleFrom(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 100.w, vertical: 12.h),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
+                  child: Text(
+                    'Submit',
+                    style: TextStyle(fontSize: 16.sp, color: Colors.white),
                   ),
-                  backgroundColor: Colors.red,
-                ),
-                child: Text(
-                  'Submit',
-                  style: TextStyle(fontSize: 16.sp, color: Colors.white),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

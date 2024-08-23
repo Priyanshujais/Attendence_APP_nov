@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../HomeScreen.dart';
+
 class ChangePassword extends StatefulWidget {
   const ChangePassword({Key? key}) : super(key: key);
 
@@ -61,7 +63,7 @@ class _ChangePasswordState extends State<ChangePassword> {
     String token = prefs.getString("token") ?? "";
     print("Token: $token");
 
-    final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/changePassWithOldPass');
+    final url = Uri.parse('http://35.154.148.75/zarvis/api/v3/changePassWithOldPass');
 
     try {
       final response = await http.post(
@@ -97,8 +99,35 @@ class _ChangePasswordState extends State<ChangePassword> {
       _showErrorDialog('An error occurred: $e');
     }
   }
+  Future<void> saveDataToSharedPreferences() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  void _showSuccessDialog(String message) {
+    await prefs.setString('deviceId', 'yourDeviceId');
+    await prefs.setString('empCode', 'yourEmpCode');
+    await prefs.setString('userId', 'yourUserId');
+    await prefs.setString('clientId', 'yourClientId');
+    await prefs.setString('projectCode', 'yourProjectCode');
+    await prefs.setString('locationId', 'yourLocationId');
+    await prefs.setString('companyId', 'yourCompanyId');
+    await prefs.setString('token', 'yourToken');
+  }
+
+  Future<void> _showSuccessDialog(message
+
+      ) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+      // Retrieve the data from SharedPreferences
+         String deviceId = prefs.getString('deviceId') ?? '';
+         String empCode = prefs.getString('empCode') ?? '';
+         String userId = prefs.getString('userId') ?? '';
+         String clientId = prefs.getString('clientId') ?? '';
+         String projectCode = prefs.getString('projectCode') ?? '';
+         String locationId = prefs.getString('locationId') ?? '';
+         String companyId = prefs.getString('companyId') ?? '';
+         String token = prefs.getString('token') ?? '';
+
+
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -107,9 +136,22 @@ class _ChangePasswordState extends State<ChangePassword> {
           content: Text(message),
           actions: <Widget>[
             TextButton(
-              child: Text("OK"),
+              child: const Text("OK"),
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => Homescreen(
+                      token: token,
+                      locationId: locationId,
+                      userId: userId,
+                      projectCode: projectCode,
+                      deviceId: deviceId,
+                      clientId: clientId,
+                      companyId: companyId,
+                      empCode: empCode,
+                    ),
+                  ),
+                );
               },
             ),
           ],

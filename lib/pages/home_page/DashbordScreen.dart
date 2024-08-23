@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:http/http.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import '../../untils/untils.dart';
@@ -39,6 +41,9 @@ class _DashbordscreenState extends State<Dashbordscreen> {
   String emp_name = "";
   String greeting = "";
   bool isManager = false;
+  bool isLoading = false;
+  String? _errorMessage;
+  String errorMessage = "";
 
 
   void handleNavigation(String menuItem) async {
@@ -108,10 +113,18 @@ class _DashbordscreenState extends State<Dashbordscreen> {
     }
   }
 
+
   Future<void> logoutUser() async {
-    const String apiUrl = 'http://35.154.148.75/zarvis/api/v2/logout';
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/logout';
 
     try {
+      if (mounted) {
+        setState(() {
+          isLoading = true;
+          errorMessage = "";
+        });
+      }
+
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', false);
       String? token = prefs.getString('token');
@@ -119,6 +132,12 @@ class _DashbordscreenState extends State<Dashbordscreen> {
 
       if (token == null) {
         print('Token is null');
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            errorMessage = 'Token is null';
+          });
+        }
         return;
       }
 
@@ -136,35 +155,66 @@ class _DashbordscreenState extends State<Dashbordscreen> {
 
       if (response.statusCode == 200) {
         // Clear SharedPreferences on successful logout
-        prefs.remove('token');
-        prefs.remove('emp_name');
-        prefs.remove('emp_code');
-        prefs.remove('project_id');
-        prefs.remove('location_id');
-        prefs.remove('first_name');
-        prefs.remove('last_name');
-        prefs.remove('phone_no');
-        prefs.remove('desg_code');
-        prefs.remove('emp_doj');
-        prefs.remove('user_id');
-        //  "punch_in_date_time": checkInDate,
-        prefs.remove('checkInDate');
+        await prefs.clear(); // Clearing all preferences in one go
 
         // Navigate to LoginScreen
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-              (Route<dynamic> route) => false,
-        );
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                (Route<dynamic> route) => false,
+          );
+        }
       } else {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+            errorMessage = 'Failed to logout: ${response.statusCode}';
+          });
+        }
         print('Failed to logout: ${response.statusCode}');
         print('Response body: ${response.body}');
-        // Handle logout failure
       }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+
+          // Enhanced error handling
+          if (e is SocketException) {
+            errorMessage = 'Network Error: ${e.message}';
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              showNetworkErrorDialog();
+            });
+          } else if (e is ClientException) {
+            errorMessage = 'Client Error: ${e.message}';
+          } else {
+            errorMessage = 'Error during logout: $e';
+          }
+        });
+      }
       print('Error during logout: $e');
-      // Handle logout error
     }
+  }
+
+  void showNetworkErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Network Error'),
+          content: const Text('Network is unreachable. Please check your internet connection.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -188,11 +238,11 @@ class _DashbordscreenState extends State<Dashbordscreen> {
   void setGreeting() {
     int hour = DateTime.now().hour;
     if (hour < 12) {
-      greeting = "Good morning";
+      greeting = "Good Morning";
     } else if (hour < 17) {
-      greeting = "Good afternoon";
+      greeting = "Good Afternoon";
     } else {
-      greeting = "Good evening";
+      greeting = "Good Evening";
     }
   }
 
@@ -213,35 +263,82 @@ class _DashbordscreenState extends State<Dashbordscreen> {
             child: Stack(
               children: [
                 Container(
-                  padding: const EdgeInsets.only(
-                      top: 15, left: 15, right: 15, bottom: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   width: screenWidth.w,
                   height: screenHeight / 1.h,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
+                  decoration: BoxDecoration(
+                    color: Colors.red, // Maintain the background color
                     borderRadius: BorderRadius.only(
                       bottomRight: Radius.circular(70),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Center(child: const SizedBox(height: 40)),
-                      Text(
-                        "$greeting, \n$emp_name\nmanager", // Display greeting and employee name
-                        style: const TextStyle(
-                          fontSize: 35,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      Center(child: const SizedBox(height: 30)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent, // No additional background color
+                        ),
+                        child: RichText(
+                          text: TextSpan(
+                            text: "$greeting,\n",
+                            style: TextStyle(
+                              fontSize: 36, // Slightly larger for emphasis
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.0,
+                              height: 1.3,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "$emp_name\n",
+                                style: TextStyle(
+                                  fontSize: 40, // Increased for emphasis
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 8.0,
+                                      color: Colors.black.withOpacity(0.3),
+                                      offset: Offset(2.0, 2.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      //SizedBox(height: -9),
+                      if (isLoading)
+                        Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      if (_errorMessage != null)
+                        Center(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+
                     ],
                   ),
                 ),
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
-                    height: screenHeight / 1.7.h,
+                    height: screenHeight / 1.8.h,
                     width: screenWidth.w,
                     padding: const EdgeInsets.only(top: 0, bottom: 0),
                     decoration: const BoxDecoration(
@@ -278,6 +375,17 @@ class _DashbordscreenState extends State<Dashbordscreen> {
                     ),
                   ),
                 ),
+                if (isLoading)
+                  Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                if (_errorMessage != null)
+                  Center(
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -292,29 +400,79 @@ class _DashbordscreenState extends State<Dashbordscreen> {
             child: Stack(
               children: [
                 Container(
-                  padding: const EdgeInsets.only(
-                      top: 15, left: 15, right: 15, bottom: 1),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                   width: screenWidth.w,
                   height: screenHeight / 1.h,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
+                  decoration: BoxDecoration(
+                    color: Colors.red, // Maintain the background color
                     borderRadius: BorderRadius.only(
                       bottomRight: Radius.circular(70),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Center(child: const SizedBox(height: 40)),
-                      Text(
-                        "$greeting ,\n$emp_name", // Display greeting and employee name
-                        style: const TextStyle(
-                          fontSize: 35,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      Center(
+                        child: CircleAvatar(
+                          radius: 30, // Adjust the radius as needed
+                          backgroundColor: Colors.white, // Background color of the avatar
+                          child: Text(
+                            emp_name.isNotEmpty
+                                ? emp_name.split(' ').map((name) => name[0].toUpperCase()).take(2).join()
+                                : '??', // Display the first letter of the user's first and last name
+                            style: TextStyle(
+                              fontSize: 24, // Adjust font size as needed
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red, // Color for the letters
+                            ),
+                          ),
                         ),
                       ),
-                      // SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.transparent, // No additional background color
+                        ),
+                        child: RichText(
+                          text: TextSpan(
+                            text: "$greeting,\n",
+                            style: TextStyle(
+                              fontSize: 36, // Slightly larger for emphasis
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.0,
+                              height: 1.3,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "$emp_name\n",
+                                style: TextStyle(
+                                  fontSize: 40, // Increased for emphasis
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 8.0,
+                                      color: Colors.black.withOpacity(0.3),
+                                      offset: Offset(2.0, 2.0),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // SizedBox(height: 10),
                     ],
                   ),
                 ),
@@ -331,15 +489,13 @@ class _DashbordscreenState extends State<Dashbordscreen> {
                       ),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.only(
-                          top: 20, left: 15, right: 15),
+                      padding: const EdgeInsets.only(top: 20, left: 15, right: 15),
                       child: SingleChildScrollView(
                         child: GridView.builder(
                           itemCount: menu.length,
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             childAspectRatio: 1.1,
                             crossAxisSpacing: 15,
@@ -361,7 +517,8 @@ class _DashbordscreenState extends State<Dashbordscreen> {
               ],
             ),
           ),
-        ));
+        )
+    );
   }
 }
 

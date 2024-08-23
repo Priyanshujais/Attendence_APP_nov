@@ -1,5 +1,4 @@
 import 'dart:convert';
-// import 'dart:js_interop';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,11 +23,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _fetchCompanies() async {
     try {
-      final response = await http.get(Uri.parse('http://35.154.148.75/zarvis/api/v2/companyList'));
+      final response = await http.get(Uri.parse('http://35.154.148.75/zarvis/api/v3/companyList'));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> companies = data['dataset'];
-        // print(response.body);
         setState(() {
           companyList = companies.map((company) => company['comp_name'].toString()).toList();
           com_id = data['dataset'][0]['comp_id'].toString();
@@ -48,7 +46,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v2/verifyEmployee'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/verifyEmployee'),
         body: json.encode({'emp_code': employeeId, 'comp_id': com_id}),
         headers: {'Content-Type': 'application/json'},
       );
@@ -61,7 +59,7 @@ class _SignupScreenState extends State<SignupScreen> {
             MaterialPageRoute(
               builder: (context) => RegisterScreen(
                 comp_id: com_id,
-                emp_code:employeeId ,
+                emp_code: employeeId,
               ),
             ),
           );
@@ -100,112 +98,113 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Column(
-        children: [
-          Container(
-            height: MediaQuery.of(context).size.height / 2.9,
-            width: MediaQuery.of(context).size.width / 2.0,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(
-                bottomRight: Radius.circular(80),
-              ),
-            ),
-            child: Center(
-              child: Image.asset(
-                'assets/images/zarvis.png',
-                width: MediaQuery.of(context).size.height / 3,
-              ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.only(
-              top: MediaQuery.of(context).size.width / 25,
-              bottom: MediaQuery.of(context).size.height / 20,
-            ),
-            child: Text(
-              "Sign Up",
-              style: TextStyle(
-                fontSize: MediaQuery.of(context).size.width / 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Container(
-            alignment: Alignment.centerLeft,
-            margin: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width / 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderSide: const BorderSide(color: Colors.black26),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: const BorderSide(color: Colors.redAccent),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    hintText: 'Select Company',
-                    hintStyle: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 15.h,
-                      horizontal: 20.w,
-                    ),
-                  ),
-                  value: selectedValue,
-                  items: companyList.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                    // print();
-                  }).toList(),
-                  onChanged: (String? value) {
-                    setState(() {
-                      selectedValue = value;
-                      print("this is selected ${selectedValue}");
-                    });
-                  },
+      resizeToAvoidBottomInset: true, // This allows the body to resize when the keyboard appears
+      body: SingleChildScrollView( // Wrap the content in SingleChildScrollView
+        child: Column(
+          children: [
+            Container(
+              height: MediaQuery.of(context).size.height / 2.9,
+              width: MediaQuery.of(context).size.width / 2.0,
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  bottomRight: Radius.circular(80),
                 ),
-                const SizedBox(height: 20),
-                fieldTile("Employee ID"),
-                customField("Enter your Employee ID", employeeIdController, false),
-                SizedBox(height: 30.h),
-                GestureDetector(
-                  onTap: _verifyEmployee,
-                  child: Container(
-                    height: 50,
-                    width: MediaQuery.of(context).size.width,
-                    margin: EdgeInsets.only(top: MediaQuery.of(context).size.height / 40),
-                    decoration: const BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.all(Radius.circular(32)),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/images/zarvis.png',
+                  width: MediaQuery.of(context).size.height / 3,
+                ),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.only(
+                top: MediaQuery.of(context).size.width / 25,
+                bottom: MediaQuery.of(context).size.height / 20,
+              ),
+              child: Text(
+                "Sign Up",
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width / 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Container(
+              alignment: Alignment.centerLeft,
+              margin: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width / 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.black26),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      hintText: 'Select Company',
+                      hintStyle: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: 15.h,
+                        horizontal: 20.w,
+                      ),
                     ),
-                    child: Center(
-                      child: Text(
-                        "SIGNUP",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: MediaQuery.of(context).size.width / 26,
-                          color: Colors.white,
-                          letterSpacing: 1,
+                    value: selectedValue,
+                    items: companyList.map((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      setState(() {
+                        selectedValue = value;
+                        print("this is selected ${selectedValue}");
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  fieldTile("Employee ID"),
+                  customField("Enter your Employee ID", employeeIdController, false),
+                  SizedBox(height: 30.h),
+                  GestureDetector(
+                    onTap: _verifyEmployee,
+                    child: Container(
+                      height: 50,
+                      width: MediaQuery.of(context).size.width,
+                      margin: EdgeInsets.only(top: MediaQuery.of(context).size.height / 40),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.all(Radius.circular(32)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "SIGNUP",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: MediaQuery.of(context).size.width / 26,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

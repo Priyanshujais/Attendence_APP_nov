@@ -21,7 +21,9 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
   late PageController _pageController;
   int _currentPageIndex = 0;
 
-  final PagingController<int, Map<String, dynamic>> _pagingController = PagingController(firstPageKey: 0);
+  final PagingController<int,
+      Map<String, dynamic>> _pagingController = PagingController(
+      firstPageKey: 0);
 
   @override
   void initState() {
@@ -44,7 +46,8 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
         return;
       }
 
-      final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/managerleavehistory');
+      final url = Uri.parse(
+          'http://35.154.148.75/zarvis/api/v3/managerleavehistory');
       final response = await http.post(
         url,
         headers: {
@@ -71,32 +74,39 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
           });
 
           final List<dynamic> leaveData = [];
-          if (jsonResponse['pending'] != null && jsonResponse['pending'] is List) {
+          if (jsonResponse['pending'] != null &&
+              jsonResponse['pending'] is List) {
             leaveData.addAll(jsonResponse['pending']);
           }
-          if (jsonResponse['approved'] != null && jsonResponse['approved'] is List) {
+          if (jsonResponse['approved'] != null &&
+              jsonResponse['approved'] is List) {
             leaveData.addAll(jsonResponse['approved']);
           }
-          if (jsonResponse['declined'] != null && jsonResponse['declined'] is List) {
+          if (jsonResponse['declined'] != null &&
+              jsonResponse['declined'] is List) {
             leaveData.addAll(jsonResponse['declined']);
           }
 
           final isLastPage = leaveData.length < _pageSize;
           if (isLastPage) {
-            _pagingController.appendLastPage(leaveData.cast<Map<String, dynamic>>());
+            _pagingController.appendLastPage(
+                leaveData.cast<Map<String, dynamic>>());
           } else {
             final nextPageKey = pageKey + leaveData.length;
-            _pagingController.appendPage(leaveData.cast<Map<String, dynamic>>(), nextPageKey);
+            _pagingController.appendPage(
+                leaveData.cast<Map<String, dynamic>>(), nextPageKey);
           }
         } else {
           // Handle API error scenario
-          print('API returned status 0 or other error: ${jsonResponse['message']}');
+          print(
+              'API returned status 0 or other error: ${jsonResponse['message']}');
           _pagingController.error = jsonResponse['message'];
         }
       } else {
         // Handle HTTP error scenario
         print('Failed to load leave data: ${response.statusCode}');
-        _pagingController.error = 'Failed to load leave data: ${response.statusCode}';
+        _pagingController.error =
+        'Failed to load leave data: ${response.statusCode}';
       }
     } catch (e) {
       // Handle other errors like network issues, etc.
@@ -148,7 +158,8 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
     );
   }
 
-  Future<void> _updateLeaveStatus(String leaveId, String status, String comment) async {
+  Future<void> _updateLeaveStatus(String leaveId, String status,
+      String comment) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
@@ -159,7 +170,8 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
         return;
       }
 
-      final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/updateleavestatus');
+      final url = Uri.parse(
+          'http://35.154.148.75/zarvis/api/v3/updateleavestatus');
       final response = await http.post(
         url,
         headers: {
@@ -205,74 +217,81 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Manager Leave Approval",
-          style: TextStyle(color: Colors.white),
+        appBar: AppBar(
+          title: Text(
+            "Manager Leave Approval",
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.red,
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildInfoContainer(
-                  "Pending",
-                  pendingCount.toString(),
-                  Colors.blueAccent,
-                  0,
-                ),
-                _buildInfoContainer(
-                  "Approved",
-                  approvedCount.toString(),
-                  Colors.green,
-                  1,
-                ),
-                _buildInfoContainer(
-                  "Rejected",
-                  declinedCount.toString(),
-                  Colors.red,
-                  2,
-                ),
-              ],
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildInfoContainer(
+                      "Pending", pendingCount.toString(), Colors.blueAccent, 0),
+                  _buildInfoContainer(
+                      "Approved", approvedCount.toString(), Colors.green, 1),
+                  _buildInfoContainer(
+                      "Rejected", declinedCount.toString(), Colors.red, 2),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPageIndex = index;
-                });
-              },
-              children: [
-                _buildLeaveList(
-                  'pending',
-                ),
-                _buildLeaveList(
-                  'approved',
-                ),
-                _buildLeaveList(
-                  'declined',
-                ),
-              ],
+            // Active Page Indicator
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ActivePageIndicator(currentIndex: _currentPageIndex,
+                      index: 0,
+                      color: Colors.blueAccent),
+                  ActivePageIndicator(currentIndex: _currentPageIndex,
+                      index: 1,
+                      color: Colors.green),
+                  ActivePageIndicator(currentIndex: _currentPageIndex,
+                      index: 2,
+                      color: Colors.red),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPageIndex = index;
+                  });
+                },
+                children: [
+                  //_buildInfoContainer(
+                  //                   "Approved",
+                  //                   approvedCount.toString(),
+                  //                   Colors.green,
+                  //                   1,
+                  //                 ),
+                  _buildLeaveList('pending'),
+                  _buildLeaveList('approved'),
+                  _buildLeaveList('declined'),
+                ],
+              ),
+            ),
+          ],
+        )
     );
   }
 
-  Widget _buildInfoContainer(
-      String title,
+  Widget _buildInfoContainer(String title,
       String value,
       Color color,
-      int index,
-      ) {
+      int index,) {
+    bool isActive = _currentPageIndex ==
+        index; // Check if this container is active
     return GestureDetector(
       onTap: () {
         _pageController.animateToPage(
@@ -282,7 +301,7 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
         );
       },
       child: Card(
-        elevation: 3,
+        elevation: isActive ? 10 : 3, // Increase elevation if active
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -290,7 +309,10 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
           padding: EdgeInsets.all(10),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.8), color],
+              colors: [
+                isActive ? color.withOpacity(1) : color.withOpacity(0.8),
+                isActive ? color : color.withOpacity(0.7),
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -322,14 +344,13 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
       ),
     );
   }
-
   Widget _buildLeaveList(String status) {
     return PagedListView<int, Map<String, dynamic>>(
       pagingController: _pagingController,
       builderDelegate: PagedChildBuilderDelegate<Map<String, dynamic>>(
         itemBuilder: (context, leave, index) {
           if (leave['status'] != status) {
-            return Container();
+            return Container(); // Skip items that do not match the current status
           }
           return Padding(
             padding: const EdgeInsets.all(8.0),
@@ -410,11 +431,33 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
       ),
     );
   }
+}
+
+
+class ActivePageIndicator extends StatelessWidget {
+  final int currentIndex;
+  final int index;
+  final Color color;
+
+  const ActivePageIndicator({
+    Key? key,
+    required this.currentIndex,
+    required this.index,
+    required this.color,
+  }) : super(key: key);
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    _pagingController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      width: currentIndex == index ? 120 : 80,
+      height: 10,
+      decoration: BoxDecoration(
+        color: currentIndex == index ? color : color.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(5),
+      ),
+    );
   }
 }
+
+

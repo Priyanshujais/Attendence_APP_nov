@@ -51,39 +51,44 @@ class _HomescreenState extends State<Homescreen> {
   @override
   void initState() {
     super.initState();
-    // log('this is emp code---- ${widget.empCode}');
-    // log('this is token ----${widget.token}');
-    // log('this is location id---- ${widget.locationId}');
-    // log('this is project id-----${widget.projectCode}');
-    // log("this is comp is -----${widget.companyId}");
-    // log("this is device id -----${widget.deviceId}");
-    // log("this is client id ---${widget.clientId}");
-    // log("this is user id ----${widget.userId}");
+    log('this is emp code---- ${widget.empCode}');
+    log('this is token ----${widget.token}');
+    log('this is location id---- ${widget.locationId}');
+    log('this is project id-----${widget.projectCode}');
+    log("this is comp is -----${widget.companyId}");
+    log("this is device id -----${widget.deviceId}");
+    log("this is client id ---${widget.clientId}");
+    log("this is user id ----${widget.userId}");
     getDetails(); // Call getDetails to store values in SharedPreferences
   }
 
   Future<void> getDetails() async {
+    // Get SharedPreferences instance
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() async{
-      await prefs.setString("token", widget.token);
-      await prefs.setString("user_id", widget.userId);
-      await prefs.setString("projectCode", widget.projectCode);
-      await prefs.setString("company_id", widget.companyId);
-      await prefs.setString("emp_code", widget.empCode);
-      await prefs.setString("location_id", widget.locationId);
-      await prefs.setString("deviceId", widget.deviceId);
-      await prefs.setString("clientId", widget.clientId);
-    });
+
+    await prefs.setString("token", widget.token);
+    await prefs.setString("userId", widget.userId);
+    await prefs.setString("projectCode", widget.projectCode);
+    await prefs.setString("companyId", widget.companyId);
+    await prefs.setString("empCode", widget.empCode);
+    await prefs.setString("locationId", widget.locationId);
+    await prefs.setString("deviceId", widget.deviceId);
+    await prefs.setString("clientId", widget.clientId);
 
 
     log("Stored token: ${prefs.getString('token')}");
-    log("Stored user_id: ${prefs.getString('user_id')}");
+    log("Stored userId: ${prefs.getString('userId')}");
     log("Stored projectCode: ${prefs.getString('projectCode')}");
-    log("Stored company_id: ${prefs.getString('company_id')}");
-    log("Stored emp_code: ${prefs.getString('emp_code')}");
-    log("Stored location_id: ${prefs.getString('location_id')}");
+    log("Stored companyId: ${prefs.getString('companyId')}");
+    log("Stored empCode: ${prefs.getString('empCode')}");
+    log("Stored locationId: ${prefs.getString('locationId')}");
     log("Stored deviceId: ${prefs.getString('deviceId')}");
     log("Stored clientId: ${prefs.getString('clientId')}");
+
+
+    setState(() {
+
+    });
   }
 
   @override

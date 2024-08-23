@@ -19,6 +19,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
     'Project': TextEditingController(),
     'Mobile': TextEditingController(),
     'Email ID': TextEditingController(),
+    'Shift': TextEditingController(),  // Added Shift field
   };
 
   bool _isLoading = false;
@@ -31,7 +32,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
   }
 
   Future<void> _fetchData() async {
-    const String apiUrl = 'http://35.154.148.75/zarvis/api/v2/user';
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/user';
 
     setState(() {
       _isLoading = true;
@@ -67,6 +68,22 @@ class _ProfileScreenState extends State<Profile_Screen> {
         _controllers['Project']?.text = userDetails['project_name'];
         _controllers['Mobile']?.text = userDetails['phone_no'];
         _controllers['Email ID']?.text = userDetails['email'];
+        _controllers['Shift']?.text = userDetails['shift_code'];
+        String shift = userDetails['shift_code'];
+        switch (shift) {
+          case 'SHIFT-1':
+            _controllers['Shift']?.text = 'Morning shift';
+            break;
+          case 'SHIFT-2':
+            _controllers['Shift']?.text = 'Evening shift';
+            break;
+          case 'SHIFT-3':
+            _controllers['Shift']?.text = 'General shift';
+            break;
+          default:
+            _controllers['Shift']?.text = 'Unknown shift';
+        }
+
 
         setState(() {
           _isLoading = false;
@@ -77,7 +94,15 @@ class _ProfileScreenState extends State<Profile_Screen> {
           _isLoading = false;
           _hasError = true;
         });
-        print('Failed to load user data: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load user data: ${response.statusCode}'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.redAccent,
+            margin: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+          ),
+        );
         print('Response body: ${response.body}');
       }
     } catch (e) {
@@ -100,7 +125,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
     ScreenUtil.init(context, designSize: Size(360, 690), minTextAdapt: true);
 
     return SafeArea(
-      top: true,
+      top: false,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -196,4 +221,3 @@ class _ProfileScreenState extends State<Profile_Screen> {
     );
   }
 }
-

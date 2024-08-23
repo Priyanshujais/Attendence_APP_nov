@@ -1,9 +1,11 @@
+
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class TeamAttendanceReport extends StatefulWidget {
   final String clientId;
@@ -25,30 +27,39 @@ class TeamAttendanceReport extends StatefulWidget {
   State<TeamAttendanceReport> createState() => _TeamAttendanceReportState();
 }
 
+
 class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
   int totalEmployees = 0;
   int totalPresent = 0;
   int totalAbsent = 0;
+  static const _pageSize = 10;
   List<Map<String, dynamic>> employeeData = [];
+
 
   // Page controller for swipe navigation
   late PageController _pageController;
   int _currentPageIndex = 0;
 
+  final PagingController<int, Map<String, dynamic>> _pagingController =
+  PagingController(firstPageKey: 0);
+
   @override
   void initState() {
     super.initState();
-    fetchAttendanceData();
     _pageController = PageController(initialPage: 0);
+
+    _pagingController.addPageRequestListener((pageKey) {
+      fetchAttendanceData(0);
+    });
   }
 
-  Future<void> fetchAttendanceData() async {
+  Future<void> fetchAttendanceData(int pageKey) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       String token = prefs.getString('token')!;
 
       final url = Uri.parse(
-          'http://35.154.148.75/zarvis/api/v2/getTodayAttendence');
+          'http://35.154.148.75/zarvis/api/v3/getTodayAttendence');
       final response = await http.post(
         url,
         headers: {
@@ -61,6 +72,8 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
           'project_id': widget.projectId,
           'emp_code': widget.empCode,
           'location_id': widget.locationId,
+          'page': pageKey,
+          'size': _pageSize,
         }),
       );
 
@@ -69,41 +82,42 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
         print('Attendance data response: $jsonResponse');
 
         if (jsonResponse['status'] == '1') {
+          // Filter out non-Map items
+          final List<Map<String,
+              dynamic>> newItems = (jsonResponse['attendance_data'] as List)
+              .where((item) =>
+          item is Map<String,
+              dynamic>) // Filter only Map items
+              .map((item) => item as Map<String, dynamic>)
+              .toList();
+
+          final isLastPage = newItems.length < _pageSize;
+          if (isLastPage) {
+            _pagingController.appendLastPage(newItems);
+          } else {
+            _pagingController.appendPage(newItems, pageKey + 1);
+          }
+
           setState(() {
             totalEmployees = jsonResponse['countemployee'] ?? 0;
             totalPresent = jsonResponse['countpresent'] ?? 0;
             totalAbsent = jsonResponse['countabsent'] ?? 0;
-
-            if (jsonResponse['attendance_data'] != null &&
-                jsonResponse['attendance_data'] is List) {
-              List<dynamic> attendanceData = jsonResponse['attendance_data'];
-              employeeData = attendanceData
-                  .where((emp) => emp is Map<String, dynamic>)
-                  .map((emp) => emp as Map<String, dynamic>)
-                  .toList();
-            }
           });
         } else {
-          // Handle API error scenario
           print(
               'API returned status 0 or other error: ${jsonResponse['message']}');
+          _pagingController.error =
+          'API returned status 0 or other error: ${jsonResponse['message']}';
         }
       } else {
-        // Handle HTTP error scenario
         print('Failed to load attendance data: ${response.statusCode}');
+        _pagingController.error =
+        'Failed to load attendance data: ${response.statusCode}';
       }
     } catch (e) {
-      // Handle other errors like network issues, etc.
       print('Exception: Failed to load attendance data: $e');
+      _pagingController.error = 'Exception: Failed to load attendance data: $e';
     }
-  }
-
-  void _makePhoneCall(String phoneNumber) async {
-    final Uri launchUri = Uri(
-      scheme: 'tel',
-      path: phoneNumber,
-    );
-    await launchUrl(launchUri);
   }
 
   @override
@@ -111,7 +125,7 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "Team Attendance",
+          "Team Attendance Report",
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.red,
@@ -125,11 +139,32 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildInfoContainer(
-                    "Total Emp", totalEmployees.toString(), Colors.red, 0),
+                    "Employees", totalEmployees.toString(), Colors.blueAccent,
+                    0),
                 _buildInfoContainer(
-                    "Total Present", totalPresent.toString(), Colors.green, 1),
+                    "Present", totalPresent.toString(), Colors.green, 1),
                 _buildInfoContainer(
-                    "Total Absent", totalAbsent.toString(), Colors.pink, 2),
+                    "Absent", totalAbsent.toString(), Colors.red, 2),
+              ],
+            ),
+          ),
+          // Active Page Indicator
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+
+              children: [
+                ActivePageIndicator(currentIndex: _currentPageIndex,
+                    index: 0,
+                    color: Colors.blueAccent),
+                ActivePageIndicator(currentIndex: _currentPageIndex,
+                    index: 1,
+                    color: Colors.green),
+                ActivePageIndicator(currentIndex: _currentPageIndex,
+                    index: 2,
+                    color: Colors.red),
               ],
             ),
           ),
@@ -142,13 +177,10 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
                 });
               },
               children: [
-                _buildEmployeeList(employeeData),
-                _buildEmployeeList(
-                    employeeData.where((emp) => emp['status'] == 'Present')
-                        .toList()),
-                _buildEmployeeList(
-                    employeeData.where((emp) => emp['status'] == 'Absent')
-                        .toList()),
+                _buildAttendanceList('all'),
+                // Adjust status or filter as needed
+                _buildAttendanceList('present'),
+                _buildAttendanceList('absent'),
               ],
             ),
           ),
@@ -157,7 +189,10 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
     );
   }
 
-  Widget _buildInfoContainer(String title, String value, Color color, int index) {
+  Widget _buildInfoContainer(String title, String value, Color color,
+      int index) {
+    bool isActive = _currentPageIndex ==
+        index; // Check if this container is active
     return GestureDetector(
       onTap: () {
         _pageController.animateToPage(
@@ -167,7 +202,7 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
         );
       },
       child: Card(
-        elevation: 3,
+        elevation: isActive ? 10 : 3, // Increase elevation if active
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -175,7 +210,10 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
           padding: EdgeInsets.all(10),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.8), color],
+              colors: [
+                isActive ? color.withOpacity(1) : color.withOpacity(0.8),
+                isActive ? color : color.withOpacity(0.7),
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -208,76 +246,132 @@ class _TeamAttendanceReportState extends State<TeamAttendanceReport> {
     );
   }
 
-  Widget _buildEmployeeList(List<Map<String, dynamic>> employees) {
-    return ListView.builder(
-      itemCount: employees.length,
-      itemBuilder: (context, index) {
-        final employee = employees[index];
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: ScreenUtil().setHeight(8.0),
-            horizontal: ScreenUtil().setWidth(
-                16.0), // Adjust horizontal padding as needed
-          ),
-          child: Container(
-            padding: EdgeInsets.all(ScreenUtil().setWidth(16.0)),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(ScreenUtil().setWidth(8.0)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  flex: 3, // Adjust flex values as needed
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        employee['first_name'] ?? '',
-                        style: TextStyle(
-                          fontSize: ScreenUtil().setSp(18.0),
-                          fontWeight: FontWeight.bold,
-                        ),
+  Widget _buildAttendanceList(String status) {
+    return PagedListView<int, Map<String, dynamic>>(
+      pagingController: _pagingController,
+      builderDelegate: PagedChildBuilderDelegate<Map<String, dynamic>>(
+        itemBuilder: (context, attendance, index) {
+          if (status == 'present' && attendance['flag'] != 'P') {
+            return Container(); // Skip items that do not match the current status
+          }
+          if (status == 'absent' && attendance['flag'] != 'A') {
+            return Container(); // Skip items that do not match the current status
+          }
+
+          return Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Card(
+              elevation: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left Side: Employee Name
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Name: ${attendance['first_name']}',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Phone: ${attendance['phone_no']}',
+                            style: TextStyle(
+                                fontSize: 14, color: Colors.grey[600]),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: ScreenUtil().setHeight(4.0)),
-                      Text(
-                        employee['phone_no'] ?? '',
-                        style: TextStyle(
-                          fontSize: ScreenUtil().setSp(16.0),
-                          color: Colors.grey[600],
+                    ),
+                    // Right Side: Employee Code and Call Icon
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [SizedBox(height: 10,),
+                        Text(
+                          ' ${attendance['emp_code']}',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(height: 4),
+                        IconButton(
+                          icon: Icon(Icons.call),
+                          color: Colors.green,
+                          onPressed: () {
+                            //phone_no
+                            _makeCall(attendance['phone_no']);
+                            // print('Making call to: ${attendance['9695778034']}');
+                            // _makeCall(attendance['9695778034']);
+                          },
+                        ),
+
+                      ],
+                    ),
+                  ],
                 ),
-                Expanded(
-                  flex: 1, // Adjust flex values as needed
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        employee['emp_code'] ?? '',
-                        style: TextStyle(
-                          fontSize: ScreenUtil().setSp(16.0),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.call, color: Colors.green),
-                        onPressed: () {
-                          _makePhoneCall(employee['phone_no']);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+        // noItemsFoundBuilder: (context) => Center(child: Text('No data found')),
+        firstPageProgressIndicatorBuilder: (context) =>
+            Center(child: CircularProgressIndicator()),
+        newPageProgressIndicatorBuilder: (context) =>
+            Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+
+
+  Future<void> _makeCall(String phoneNumber) async {
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber,
+    );
+
+    // Request permission
+    var status = await Permission.phone.status;
+    if (!status.isGranted) {
+      await Permission.phone.request();
+    }
+
+    // Check if permission is granted before proceeding
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      print('Could not launch $launchUri');
+    }
+  }
+}
+
+
+
+class ActivePageIndicator extends StatelessWidget {
+  final int currentIndex;
+  final int index;
+  final Color color;
+
+  const ActivePageIndicator({
+    Key? key,
+    required this.currentIndex,
+    required this.index,
+    required this.color,
+  }) : super(key: key);
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      width: currentIndex == index ? 120: 80,
+      height: 10,
+      decoration: BoxDecoration(
+        color: currentIndex == index ? color : color.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(5),
+      ),
     );
   }
 }

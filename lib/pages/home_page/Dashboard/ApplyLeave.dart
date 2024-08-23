@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zarvis_app/pages/home_page/DashbordScreen.dart';
+import 'package:zarvis_app/pages/home_page/HomeScreen.dart';
 
 class ApplyLeave extends StatefulWidget {
   const ApplyLeave({Key? key}) : super(key: key);
@@ -20,7 +20,8 @@ class _LeaveScreenState extends State<ApplyLeave> {
   String _selectedLeaveType = 'Select Leave Type';
   final List<String> _leaveTypes = [
     'Select Leave Type',
-    'Emergency / Earned Leave',
+    'Emergency ',
+     'Earned Leave',
     'Comp-off',
     'Half Day',
   ];
@@ -38,6 +39,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
   }
 
   Future<void> _selectDate(
+
       BuildContext context, TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -51,6 +53,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
       });
     }
   }
+
 
   Future<void> _submitForm() async {
     final String fromDate = _fromDateController.text;
@@ -78,7 +81,8 @@ class _LeaveScreenState extends State<ApplyLeave> {
     String token = prefs.getString('token')!;
     String? empCode = prefs.getString('emp_code');
 
-    final url = Uri.parse('http://35.154.148.75/zarvis/api/v2/ApplyLeave');
+
+    final url = Uri.parse('http://35.154.148.75/zarvis/api/v3/ApplyLeave');
     final response = await http.post(
       url,
       headers: <String, String>{
@@ -91,7 +95,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
         'leave_to_date': toDate,
         'Subject': subject,
         'leave_message': reason,
-        'leaveType': _selectedLeaveType,
+        'leave_type': _selectedLeaveType,
       }),
     );
 
@@ -102,13 +106,17 @@ class _LeaveScreenState extends State<ApplyLeave> {
     if (response.statusCode == 200) {
       final jsonResponse = json.decode(response.body);
       if (jsonResponse['status'] == '1') {
-        _showThankYouDialog();
+        _showThankYouDialog(
+
+        );
       } else {
         setState(() {
           _hasError = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to apply leave: ${jsonResponse['message']}')),
+          SnackBar(
+              content:
+                  Text('Failed to apply leave: ${jsonResponse['message']}')),
         );
       }
     } else {
@@ -120,19 +128,67 @@ class _LeaveScreenState extends State<ApplyLeave> {
       );
     }
   }
+  Future<void> saveDataToSharedPreferences() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
 
-  void _showThankYouDialog() {
+    await prefs.setString('deviceId', 'yourDeviceId');
+    await prefs.setString('empCode', 'yourEmpCode');
+    await prefs.setString('userId', 'yourUserId');
+    await prefs.setString('clientId', 'yourClientId');
+    await prefs.setString('projectCode', 'yourProjectCode');
+    await prefs.setString('locationId', 'yourLocationId');
+    await prefs.setString('companyId', 'yourCompanyId');
+    await prefs.setString('token', 'yourToken');
+  }
+
+  Future<void> _showThankYouDialog() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Retrieve the data from SharedPreferences
+    String deviceId = prefs.getString('deviceId') ?? '';
+    String empCode = prefs.getString('empCode') ?? '';
+    String userId = prefs.getString('userId') ?? '';
+    String clientId = prefs.getString('clientId') ?? '';
+    String projectCode = prefs.getString('projectCode') ?? '';
+    String locationId = prefs.getString('locationId') ?? '';
+    String companyId = prefs.getString('companyId') ?? '';
+    String token = prefs.getString('token') ?? '';
+
+    // Print the data for debugging
+    print('Device ID: $deviceId');
+    print('Emp Code: $empCode');
+    print('User ID: $userId');
+    print('Client ID: $clientId');
+    print('Project Code: $projectCode');
+    print('Location ID: $locationId');
+    print('Company ID: $companyId');
+    print('Token: $token');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text("Thank You!"),
-          content: const Text("Your leave application has been submitted successfully."),
+          content: const Text(
+              "Your leave application has been submitted successfully."),
           actions: <Widget>[
             TextButton(
               child: const Text("OK"),
               onPressed: () {
-                Navigator.of(context).pop(Dashbordscreen(token: '', companyId: '', empCode: '', ));
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => Homescreen(
+                      token: token,
+                      locationId: locationId,
+                      userId: userId,
+                      projectCode: projectCode,
+                      deviceId: deviceId,
+                      clientId: clientId,
+                      companyId: companyId,
+                      empCode: empCode,
+                    ),
+                  ),
+                );
               },
             ),
           ],
@@ -160,7 +216,7 @@ class _LeaveScreenState extends State<ApplyLeave> {
               opacity: 0.2,
               child: Image.asset(
                 'assets/images/zarvis.png', // Replace with your background image asset
-                // fit: BoxFit.cover,
+                //fit: BoxFit.cover,
               ),
             ),
           ),
@@ -183,308 +239,127 @@ class _LeaveScreenState extends State<ApplyLeave> {
                       ),
                     ),
                     SizedBox(height: ScreenUtil().setHeight(20)),
-                    SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  "From Date:",
-                                  style: TextStyle(
-                                      fontSize: ScreenUtil().setSp(18),
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  height: ScreenUtil().setHeight(40),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: TextField(
-                                    controller: _fromDateController,
-                                    decoration: InputDecoration(
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: ScreenUtil().setHeight(10),
-                                          horizontal:
-                                          ScreenUtil().setWidth(10)),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      hintText: 'Select Date',
-                                      suffixIcon: IconButton(
-                                        icon: const Icon(Icons.calendar_today),
-                                        onPressed: () {
-                                          _selectDate(
-                                              context, _fromDateController);
-                                        },
-                                      ),
-                                    ),
-                                    readOnly: true,
-                                    onTap: () {
-                                      _selectDate(
-                                          context, _fromDateController);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: ScreenUtil().setHeight(10)),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  "To Date:",
-                                  style: TextStyle(
-                                      fontSize: ScreenUtil().setSp(18),
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  height: ScreenUtil().setHeight(40),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: TextField(
-                                    controller: _toDateController,
-                                    decoration: InputDecoration(
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: ScreenUtil().setHeight(10),
-                                          horizontal:
-                                          ScreenUtil().setWidth(10)),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      hintText: 'Select Date',
-                                      suffixIcon: IconButton(
-                                        icon: const Icon(Icons.calendar_today),
-                                        onPressed: () {
-                                          _selectDate(
-                                              context, _toDateController);
-                                        },
-                                      ),
-                                    ),
-                                    readOnly: true,
-                                    onTap: () {
-                                      _selectDate(
-                                          context, _toDateController);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: ScreenUtil().setHeight(10)),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  "Subject:",
-                                  style: TextStyle(
-                                      fontSize: ScreenUtil().setSp(18),
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  height: ScreenUtil().setHeight(40),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: TextField(
-                                    controller: _subjectController,
-                                    decoration: InputDecoration(
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: ScreenUtil().setHeight(10),
-                                          horizontal:
-                                          ScreenUtil().setWidth(10)),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      hintText: 'Enter Subject',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: ScreenUtil().setHeight(10)),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  "Leave Type:",
-                                  style: TextStyle(
-                                      fontSize: ScreenUtil().setSp(18),
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  height: ScreenUtil().setHeight(40),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedLeaveType,
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        _selectedLeaveType = newValue!;
-                                      });
-                                    },
-                                    items: _leaveTypes.map((leaveType) {
-                                      return DropdownMenuItem<String>(
-                                        value: leaveType,
-                                        child: Text(leaveType),
-                                      );
-                                    }).toList(),
-                                    decoration: InputDecoration(
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: ScreenUtil().setHeight(10),
-                                          horizontal:
-                                          ScreenUtil().setWidth(2)),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      hintText: 'Select Leave type ',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: ScreenUtil().setHeight(10)),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  "Reason:",
-                                  style: TextStyle(
-                                      fontSize: ScreenUtil().setSp(18),
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              SizedBox(width: ScreenUtil().setWidth(10)),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: TextField(
-                                    controller: _reasonController,
-                                    maxLines: 3,
-                                    decoration: InputDecoration(
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: ScreenUtil().setHeight(10),
-                                          horizontal:
-                                          ScreenUtil().setWidth(10)),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      hintText: 'Enter Reason',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: ScreenUtil().setHeight(20)),
-                          Center(
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _submitForm,
-                              child: _isLoading
-                                  ? CircularProgressIndicator()
-                                  : Text(
-                                "Apply",
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTextFieldRow(
+                          "From Date:",
+                          _fromDateController,
+                          "Select Date",
+                          _selectDate,
+                        ),
+                        SizedBox(height: ScreenUtil().setHeight(10)),
+                        _buildTextFieldRow(
+                          "To Date:",
+                          _toDateController,
+                          "Select Date",
+                          _selectDate,
+                        ),
+                        SizedBox(height: ScreenUtil().setHeight(10)),
+                        _buildTextFieldRow(
+                          "Subject:",
+                          _subjectController,
+                          "Enter Subject",
+                          null,
+                        ),
+                        SizedBox(height: ScreenUtil().setHeight(10)),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                "Leave Type:",
                                 style: TextStyle(
-                                  fontSize: ScreenUtil().setSp(18),
+                                    fontSize: ScreenUtil().setSp(18),
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 4,
+                              child: Container(
+                                height: ScreenUtil().setHeight(40),
+                                decoration: BoxDecoration(
                                   color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 6,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedLeaveType,
+                                  onChanged: (newValue) {
+                                    setState(() {
+                                      _selectedLeaveType = newValue!;
+                                    });
+                                  },
+                                  items: _leaveTypes.map((leaveType) {
+                                    return DropdownMenuItem<String>(
+                                      value: leaveType,
+                                      child: Text(
+                                        leaveType,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList(),
+                                  decoration: InputDecoration(
+                                    contentPadding: EdgeInsets.symmetric(
+                                      vertical: ScreenUtil().setHeight(10),
+                                      horizontal: ScreenUtil().setWidth(10),
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    hintText: 'Select Leave type',
+                                  ),
+                                  isExpanded: true,
                                 ),
                               ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: ScreenUtil().setWidth(80),
-                                  vertical: ScreenUtil().setHeight(12),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30.0),
-                                ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: ScreenUtil().setHeight(10)),
+                        _buildReasonField(),
+                        SizedBox(height: ScreenUtil().setHeight(20)),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submitForm,
+                            child: _isLoading
+                                ? CircularProgressIndicator()
+                                : Text(
+                                    "Apply",
+                                    style: TextStyle(
+                                      fontSize: ScreenUtil().setSp(18),
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: ScreenUtil().setWidth(80),
+                                vertical: ScreenUtil().setHeight(12),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30.0),
                               ),
                             ),
                           ),
-                          if (_hasError)
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  'Failed to apply leave. Please try again.',
-                                  style: TextStyle(color: Colors.red),
-                                ),
+                        ),
+                        if (_hasError)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                'Failed to apply leave. Please try again.',
+                                style: TextStyle(color: Colors.red),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -493,6 +368,100 @@ class _LeaveScreenState extends State<ApplyLeave> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTextFieldRow(String labelText, TextEditingController controller,
+      String hintText, Function? onTap) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            labelText,
+            style: TextStyle(
+                fontSize: ScreenUtil().setSp(18), fontWeight: FontWeight.bold),
+          ),
+        ),
+        Expanded(
+          flex: 4,
+          child: Container(
+            height: ScreenUtil().setHeight(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller,
+              onTap: onTap != null ? () => onTap(context, controller) : null,
+              readOnly: onTap != null,
+              decoration: InputDecoration(
+                contentPadding: EdgeInsets.symmetric(
+                    vertical: ScreenUtil().setHeight(10),
+                    horizontal: ScreenUtil().setWidth(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                hintText: hintText,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReasonField() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Text(
+            "Reason:",
+            style: TextStyle(
+                fontSize: ScreenUtil().setSp(18), fontWeight: FontWeight.bold),
+          ),
+        ),
+        Expanded(
+          flex: 4,
+          child: Container(
+            height: ScreenUtil().setHeight(80),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _reasonController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                contentPadding: EdgeInsets.symmetric(
+                    vertical: ScreenUtil().setHeight(10),
+                    horizontal: ScreenUtil().setWidth(10)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
+                ),
+                hintText: 'Enter Reason',
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
