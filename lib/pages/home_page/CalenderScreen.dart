@@ -162,62 +162,65 @@ class _CalendarscreenState extends State<Calenderscreen> {
 
       if (response.statusCode == 200) {
         Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+        log("Response data: $jsonResponse");  // Log the response to check if data is present
+
         if (jsonResponse['data'] != null) {
           setState(() {
             detailedAttendanceData = jsonResponse['data'];
 
-            // Check if locationUpdates is not null and not empty
+            // Check if locationUpdates exists and contains valid entries
             if (detailedAttendanceData?['locationUpdates'] != null &&
-                detailedAttendanceData?['locationUpdates'].isNotEmpty) {
-              // Safely access punch_in_date_time
-              detailedAttendanceData?['punch_in_date_time'] =
-                  detailedAttendanceData?['locationUpdates'][0]['punch_in_date_time'] ?? 'N/A';
-              detailedAttendanceData?['punch_in_address'] =
-                  detailedAttendanceData?['locationUpdates'][0]['punch_in_address'] ?? 'N/A';
+                detailedAttendanceData!['locationUpdates'].isNotEmpty) {
+              var locationUpdate = detailedAttendanceData!['locationUpdates'][0];
+
+              // Update fields only if they contain valid data
+              detailedAttendanceData?['punch_in_date_time'] = locationUpdate['punch_in_date_time'] ?? 'N/A';
+              detailedAttendanceData?['punch_in_address'] = locationUpdate['punch_in_address'] ?? 'N/A';
+
+              log("Updated punch_in_date_time: ${detailedAttendanceData?['punch_in_date_time']}");
+              log("Updated punch_in_address: ${detailedAttendanceData?['punch_in_address']}");
             } else {
+              // Set fields as 'N/A' if location updates are not valid
               detailedAttendanceData?['punch_in_date_time'] = 'N/A';
               detailedAttendanceData?['punch_in_address'] = 'N/A';
             }
           });
+        } else {
+          setState(() {
+            detailedAttendanceData = null;
+          });
+          log("Data field in response is null.");
         }
       } else {
-        setState(() {
-          detailedAttendanceData = null;
-        });
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Error'),
-            content: const Text('Failed to fetch detailed attendance data. Please try again later.'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+        _showErrorDialog();
+        log("Error response status: ${response.statusCode}");
       }
     } catch (e) {
-      setState(() {
-        detailedAttendanceData = null;
-      });
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Network error: Please check your internet connection and try again.'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      _showErrorDialog();
+      log("Exception caught: $e");
     }
+  }
+
+// Helper function to show the error dialog
+  void _showErrorDialog() {
+    setState(() {
+      detailedAttendanceData = null;
+    });
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: const Text(
+            'Failed to fetch detailed attendance data. Please try again later.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget buildAttendanceRecord(Map<String, dynamic> record) {
@@ -231,7 +234,8 @@ class _CalendarscreenState extends State<Calenderscreen> {
     String punchOut;
     String totalWorkingTime;
     if (record['punchOutDT'] == "No Out Time." ||
-        record['totalWorkingTime'] == "No Out Time.") {
+        record['totalWorkingTime'] == "No Out Time." ||
+        record['totalWorkingTime'] == "00:00:00") {
       punchOut = 'N/A';
       totalWorkingTime = 'N/A';
     } else {
@@ -318,56 +322,85 @@ class _CalendarscreenState extends State<Calenderscreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              'Check In: $punchIn',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Check Out: $punchOut',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Total Working Hours: $totalWorkingTime',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-            ),
+
+            if (punchIn != 'N/A' && punchIn != "12:00 AM")
+              Text(
+                'Check In: $punchIn',
+                style: const TextStyle(fontSize: 14),
+              ),
+            if (punchOut != 'N/A' && punchOut != "12:00 AM")
+              Text(
+                'Check Out: $punchOut',
+                style: const TextStyle(fontSize: 14),
+              ),
+            if (totalWorkingTime != 'N/A' && totalWorkingTime != "00:00:00")
+              Text(
+                'Total Working Hours: $totalWorkingTime',
+                style: const TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+
             if (expandedDate == DateTime.parse(record['date']) &&
                 detailedAttendanceData != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Divider(),
-                  Text(
-                    'Punch In Address: ${detailedAttendanceData!['punchInAddress'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Punch In Remark: ${detailedAttendanceData!['punchInRemark'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Punch Out Address: ${detailedAttendanceData!['punchOutAddress'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Punch Out Remark: ${detailedAttendanceData!["punchOutRemark"] ?? "N/A"}",
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
+                  if (detailedAttendanceData?['punchInTime'] != null)
+                    Text(
+                      'Punch In Time: ${detailedAttendanceData!['punchInTime']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  if (detailedAttendanceData?['punchOutTime'] != null)
+                    Text(
+                      'Punch Out Time: ${detailedAttendanceData!['punchOutTime']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  if (detailedAttendanceData?['punchInRemark'] != null)
+                    Text(
+                      'Punch In Remark: ${detailedAttendanceData!['punchInRemark']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  if (detailedAttendanceData?['punchOutRemark'] != null)
+                    Text(
+                      'Punch Out Remark: ${detailedAttendanceData!['punchOutRemark']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  if (detailedAttendanceData?['punchInAddress'] != null)
+                    Text(
+                      'Punch In Address: ${detailedAttendanceData!['punchInAddress']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  if (detailedAttendanceData?['punchOutAddress'] != null)
+                    Text(
+                      'Punch Out Address: ${detailedAttendanceData!['punchOutAddress']}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   const Divider(),
-                  Text(
-                    'Update Address: ${detailedAttendanceData?['punch_in_address'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Update Date and Time: ${detailedAttendanceData!['punch_in_date_time'] ?? 'N/A'}',
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  ...detailedAttendanceData!['locationUpdates']
+                      .map<Widget>((update) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (update['client_name'] != null)
+                          Text(
+                            'Client Name: ${update['client_name']}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        if (update['punch_in_address'] != null)
+                          Text(
+                            'Update Address: ${update['punch_in_address']}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        if (update['punch_in_date_time'] != null)
+                          Text(
+                            'Update Date and Time: ${update['punch_in_date_time']}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        const Divider(),
+                      ],
+                    );
+                  }).toList(),
                 ],
               ),
           ],
@@ -391,74 +424,66 @@ class _CalendarscreenState extends State<Calenderscreen> {
     }
   }
 
-  @override
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Attendance'),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // Call the method to update attendance log when pulled down
-          loadAttendanceLog();
-          await updateAttendanceLog(selectedDate);
-         // await detailedAttendanceData!(selectedDate);
-        },
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () async {
-                  final month = await SimpleMonthYearPicker.showMonthYearPickerDialog(
-                    context: context,
-                    titleTextStyle: const TextStyle(),
-                    selectionColor: Colors.red,
-                    monthTextStyle: const TextStyle(),
-                    yearTextStyle: const TextStyle(),
-                    disableFuture: true,
-                  );
-                  if (month != null) {
-                    setState(() {
-                      selectedDate = month;
-                    });
-                    updateAttendanceLog(month);
-                  }
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      DateFormat("MMMM yyyy").format(selectedDate),
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                    const Row(
-                      children:  [
-                        Text('Pick a Month'),
-                        SizedBox(width: 8),
-                        Icon(Icons.calendar_today),
-                      ],
-                    ),
-                  ],
-                ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () async {
+                final month = await SimpleMonthYearPicker.showMonthYearPickerDialog(
+                  context: context,
+                  titleTextStyle: const TextStyle(),
+                  selectionColor: Colors.red,
+                  monthTextStyle: const TextStyle(),
+                  yearTextStyle: const TextStyle(),
+                  disableFuture: true,
+                );
+                if (month != null) {
+                  setState(() {
+                    selectedDate = month;
+                  });
+                  updateAttendanceLog(month);
+                }
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    DateFormat("MMMM yyyy").format(selectedDate),
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                  const Row(
+                    children: [
+                      Text('Pick a Month'),
+                      SizedBox(width: 8),
+                      Icon(Icons.calendar_today),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              if (_hasError)
-                const Center(child: Text('Failed to fetch attendance data. Please try again later.')),
-              if (!_hasError && attendanceData.isEmpty)
-                const Center(child: Text('No attendance records found')),
-              if (!_hasError && attendanceData.isNotEmpty)
-                Column(
-                  children: attendanceData
-                      .map((record) => buildAttendanceRecord(record))
-                      .toList(),
-                ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            if (_hasError)
+              const Center(child: Text('Failed to fetch attendance data. Please try again later.')),
+            if (!_hasError && attendanceData.isEmpty)
+              const Center(child: Text('No attendance records found')),
+            if (!_hasError && attendanceData.isNotEmpty)
+              Column(
+                children: attendanceData
+                    .map((record) => buildAttendanceRecord(record))
+                    .toList(),
+              ),
+          ],
         ),
       ),
     );

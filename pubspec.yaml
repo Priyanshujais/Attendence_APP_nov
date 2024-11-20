@@ -38,28 +38,27 @@ dependencies:
   flutter_screenutil: ^5.9.1
   dropdown_textfield: ^1.0.8
   dropdown_button2: ^2.3.9
-  material_color_utilities: ^0.8.0
+  material_color_utilities: ^0.11.1
   table_calendar: ^3.0.2
   http: ^1.2.1
-  flutter_keyboard_visibility: ^6.0.0
+  flutter_keyboard_visibility: any
   font_awesome_flutter: ^10.7.0
   intl: ^0.19.0
   slide_to_act: ^2.0.2
   get: any
-  #  http: any
-  geolocator: ^12.0.0
+  geolocator: ^13.0.2
   simple_month_year_picker: ^1.0.5
   shared_preferences: ^2.0.6
-  permission_handler: ^11.3.1
-  geocoding: ^3.0.0
+  permission_handler: ^11.3.0
+  geocoding: any
   google_maps_flutter: ^2.7.0
   url_launcher: ^6.0.20
   infinite_scroll_pagination: ^4.0.0
-  connectivity_plus: ^6.0.3
+  connectivity_plus: ^6.0.5
   smooth_page_indicator: any
-  flutter_local_notifications: ^17.2.1+2
-  device_info_plus: ^10.1.2
-  timezone: ^0.9.0
+  flutter_local_notifications: ^18.0.1
+  device_info_plus: ^11.1.1
+  timezone: ^0.10.0
   firebase_core: ^3.3.0
   firebase_messaging: ^15.0.4
 
@@ -68,7 +67,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.1
 
 flutter_icons:
     android: true

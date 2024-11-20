@@ -19,7 +19,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
     'Project': TextEditingController(),
     'Mobile': TextEditingController(),
     'Email ID': TextEditingController(),
-    'Shift': TextEditingController(),  // Added Shift field
+    'Shift': TextEditingController(),
   };
 
   bool _isLoading = false;
@@ -62,14 +62,20 @@ class _ProfileScreenState extends State<Profile_Screen> {
         final data = json.decode(response.body);
         final userDetails = data['userDetails'];
 
+        // Save the shift code in SharedPreferences as soon as it is fetched
+        String shift = userDetails['shift_code'];
+        await prefs.setString('shift_code', shift); // Store shift code
+        print("Shift saved: $shift");
+
         _controllers['Full Name']?.text = '${userDetails['first_name']} ${userDetails['last_name']}';
         _controllers['Employee ID']?.text = userDetails['emp_code'];
         _controllers['Company']?.text = userDetails['comp_name'];
         _controllers['Project']?.text = userDetails['project_name'];
         _controllers['Mobile']?.text = userDetails['phone_no'];
         _controllers['Email ID']?.text = userDetails['email'];
-        _controllers['Shift']?.text = userDetails['shift_code'];
-        String shift = userDetails['shift_code'];
+        _controllers['Shift']?.text = shift;
+
+        // Handle shift types
         switch (shift) {
           case 'SHIFT-1':
             _controllers['Shift']?.text = 'Morning shift';
@@ -83,7 +89,6 @@ class _ProfileScreenState extends State<Profile_Screen> {
           default:
             _controllers['Shift']?.text = 'Unknown shift';
         }
-
 
         setState(() {
           _isLoading = false;

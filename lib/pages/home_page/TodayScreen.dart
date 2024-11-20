@@ -12,11 +12,11 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slide_to_act/slide_to_act.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 
 import '../../untils/alert_widget.dart';
 
-import 'package:timezone/timezone.dart' as tz;
+
 
 class Todayscreen extends StatefulWidget {
   String? deviceId;
@@ -42,6 +42,7 @@ class Todayscreen extends StatefulWidget {
 }
 
 class _TodayscreenState extends State<Todayscreen> {
+  //Duration _elapsedTime = Duration.zero;
   double screenHeight = 0;
   double screenWidth = 0;
   String employeeName = "Employee";
@@ -63,7 +64,7 @@ class _TodayscreenState extends State<Todayscreen> {
   bool isHandlingCheckIn = false;
   bool isDayCompleted = false;
   bool _isLoading = false;
-
+  Timer? _timer;
   String empName = '';
   late GoogleMapController mapController;
   LatLng currentLatLng = LatLng(20.593683, 78.962883);
@@ -107,16 +108,16 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       final response = await http
           .post(
-            Uri.parse('http://35.154.148.75/zarvis/api/v3/initializeStatus'),
-            headers: {
-              "Content-Type": "application/json",
-              'Authorization': 'Bearer ${widget.token}',
-            },
-            body: jsonEncode({
-              "emp_id": widget.empCode,
-              "token": widget.token,
-            }),
-          )
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/initializeStatus'),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          "emp_id": widget.empCode,
+          "token": widget.token,
+        }),
+      )
           .timeout(Duration(seconds: 10)); // Set timeout duration
 
       if (response.statusCode == 200) {
@@ -183,7 +184,7 @@ class _TodayscreenState extends State<Todayscreen> {
 
   @override
   void dispose() {
-    timer?.cancel();
+    _timer?.cancel();
     super.dispose();
   }
 
@@ -197,8 +198,8 @@ class _TodayscreenState extends State<Todayscreen> {
     });
   }
 
-  Future<void> showLocationDialog(
-      BuildContext context, bool isCheckingIn) async {
+  Future<void> showLocationDialog(BuildContext context,
+      bool isCheckingIn) async {
     if (isCheckingIn) {
       await handleCheckInProcess(context);
     } else {
@@ -209,7 +210,7 @@ class _TodayscreenState extends State<Todayscreen> {
   Future<String> fetchLocationDetails(double latitude, double longitude) async {
     try {
       List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude).timeout(
+      await placemarkFromCoordinates(latitude, longitude).timeout(
         const Duration(seconds: 5),
       );
       Placemark placemark = placemarks.first;
@@ -223,15 +224,15 @@ class _TodayscreenState extends State<Todayscreen> {
   //bool isHandlingCheckIn = false;
   bool isMissingAttendanceDialogShown = false;
 
-  Future<void> showLocationAndMarkAttendance(
-      BuildContext context, bool isCheckingIn) async {
+  Future<void> showLocationAndMarkAttendance(BuildContext context,
+      bool isCheckingIn) async {
     // Check for location permission
     var locationPermissionStatus = await Permission.location.request();
 
     if (locationPermissionStatus.isGranted) {
       Position position = await fetchUserLocation();
       String initialAddress =
-          await fetchLocationDetails(position.latitude, position.longitude);
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       List<Map<String, String>> reports = [];
       bool reportAdded = false;
@@ -251,8 +252,14 @@ class _TodayscreenState extends State<Todayscreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        height: MediaQuery.of(context).size.height * 0.3,
+                        width: MediaQuery
+                            .of(context)
+                            .size
+                            .width * 0.8,
+                        height: MediaQuery
+                            .of(context)
+                            .size
+                            .height * 0.3,
                         child: Stack(
                           children: [
                             GoogleMap(
@@ -309,7 +316,7 @@ class _TodayscreenState extends State<Todayscreen> {
                                 mini: true,
                                 onPressed: () async {
                                   Position newPosition =
-                                      await fetchUserLocation();
+                                  await fetchUserLocation();
                                   setState(() {
                                     position = newPosition;
                                   });
@@ -323,7 +330,10 @@ class _TodayscreenState extends State<Todayscreen> {
                       Align(
                         alignment: Alignment.center,
                         child: Container(
-                          width: MediaQuery.of(context).size.width * 0.8,
+                          width: MediaQuery
+                              .of(context)
+                              .size
+                              .width * 0.8,
                           margin: const EdgeInsets.only(top: 16),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -391,7 +401,7 @@ class _TodayscreenState extends State<Todayscreen> {
                             showAddReportDialog(
                               context,
                               reports,
-                              () {
+                                  () {
                                 setState(() {
                                   reportAdded = true;
                                 });
@@ -454,12 +464,56 @@ class _TodayscreenState extends State<Todayscreen> {
       showCustomAlert(context, 'Location permission is required to continue.');
     }
   }
+  void showAddReportDialog(BuildContext context,
+      List<Map<String, String>> reports,
+      Function onReportAdded,) async {
 
-  void showAddReportDialog(
-    BuildContext context,
-    List<Map<String, String>> reports,
-    Function onReportAdded,
-  ) {
+
+    Future<String?> getShiftCode() async {
+      const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/user';
+
+      try {
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? token = prefs.getString('token');  // Retrieve the token from SharedPreferences
+
+        if (token == null) {
+          print("No token found.");
+          return null;  // If token is not available, return null
+        }
+
+        // Make API call
+        final response = await http.get(
+          Uri.parse(apiUrl),
+          headers: {
+            'Authorization': 'Bearer $token',  // Pass token in Authorization header
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final userDetails = data['userDetails'];
+
+          // Extract the shift_code from the response
+          String shiftCode = userDetails['shift_code'];
+          print("Shift Code from API: $shiftCode");
+
+          return shiftCode;  // Return the shift code
+        } else {
+          print("Failed to fetch user data: ${response.statusCode}");
+          return null;
+        }
+      } catch (e) {
+        print("Error fetching shift code: $e");
+        return null;
+      }
+    }
+
+    String? shift = await getShiftCode();
+    print("shift: $shift");
+
+
+    // print('Retrieved Shift Code: $shift');// he shift value you saved earlier
+
     TextEditingController startTimeController = TextEditingController();
     TextEditingController endTimeController = TextEditingController();
     TextEditingController taskController = TextEditingController();
@@ -502,8 +556,7 @@ class _TodayscreenState extends State<Todayscreen> {
               ),
               TextField(
                 controller: taskController,
-                decoration:
-                    const InputDecoration(labelText: 'Task Description'),
+                decoration: const InputDecoration(labelText: 'Task Description'),
               ),
             ],
           ),
@@ -519,6 +572,7 @@ class _TodayscreenState extends State<Todayscreen> {
                 if (startTimeController.text.isNotEmpty &&
                     endTimeController.text.isNotEmpty &&
                     taskController.text.isNotEmpty) {
+
                   // Function to parse time considering AM/PM
                   TimeOfDay parseTime(String time) {
                     final parts = time.split(' ');
@@ -538,10 +592,25 @@ class _TodayscreenState extends State<Todayscreen> {
                   final startTime = parseTime(startTimeController.text);
                   final endTime = parseTime(endTimeController.text);
 
-                  // Compare the times
-                  if (startTime.hour < endTime.hour ||
-                      (startTime.hour == endTime.hour &&
-                          startTime.minute < endTime.minute)) {
+                  // Only apply validation if the user has SHIFT-1
+                  if (shift == 'SHIFT-1') {
+                    // Compare the times
+                    if (startTime.hour < endTime.hour ||
+                        (startTime.hour == endTime.hour &&
+                            startTime.minute < endTime.minute)) {
+                      reports.add({
+                        "start_date_time": startTimeController.text,
+                        "end_date_time": endTimeController.text,
+                        "activity": taskController.text,
+                      });
+                      onReportAdded();
+                      Navigator.of(context).pop();
+                    } else {
+                      showCustomAlert(
+                          context, "End time must be greater than start time");
+                    }
+                  } else {
+                    // If user is on a different shift (SHIFT-2, etc.), skip validation
                     reports.add({
                       "start_date_time": startTimeController.text,
                       "end_date_time": endTimeController.text,
@@ -549,9 +618,6 @@ class _TodayscreenState extends State<Todayscreen> {
                     });
                     onReportAdded();
                     Navigator.of(context).pop();
-                  } else {
-                    showCustomAlert(
-                        context, "End time must be greater than start time");
                   }
                 } else {
                   showCustomAlert(context, "All report fields are required");
@@ -565,12 +631,8 @@ class _TodayscreenState extends State<Todayscreen> {
     );
   }
 
-  TimeOfDay _parseTimeOfDay(String time) {
-    final format = DateFormat.jm(); // '6:00 AM'
-    return TimeOfDay.fromDateTime(format.parse(time));
-  }
-
   List<Map<String, String>> reports = [];
+
   Future<void> showErrorDialog(BuildContext context, String message) async {
     return showDialog<void>(
       context: context,
@@ -592,9 +654,9 @@ class _TodayscreenState extends State<Todayscreen> {
     );
   }
 
-  Future<void> showMissingAttendanceDialog(
-      BuildContext context, String date) async {
-    String status = 'absent';
+  Future<void> showMissingAttendanceDialog(BuildContext context,
+      String date) async {
+    String? status;
     TextEditingController remarkController = TextEditingController();
     TextEditingController startTimeController = TextEditingController();
     TextEditingController endTimeController = TextEditingController();
@@ -616,14 +678,14 @@ class _TodayscreenState extends State<Todayscreen> {
                       value: status,
                       items: [
                         DropdownMenuItem(
-                            value: 'absent', child: Text('Absent')),
+                            value: 'Absent', child: Text('Absent')),
                         DropdownMenuItem(
-                            value: 'week-off', child: Text('Week-off')),
+                            value: 'Week-Off', child: Text('Week-off')),
                         DropdownMenuItem(
-                            value: 'public-holiday',
+                            value: 'Public-Holiday',
                             child: Text('Public Holiday')),
                         DropdownMenuItem(
-                            value: 'comp-off', child: Text('Comp-off')),
+                            value: 'Comp-Off', child: Text('Comp-off')),
                         DropdownMenuItem(
                             value: 'present', child: Text('Present')),
                       ],
@@ -725,7 +787,7 @@ class _TodayscreenState extends State<Todayscreen> {
                       return;
                     }
 
-                    if (status == 'present' &&
+                    if (status == 'Present' &&
                         (startTimeController.text.isEmpty ||
                             endTimeController.text.isEmpty)) {
                       if (mounted) {
@@ -743,29 +805,29 @@ class _TodayscreenState extends State<Todayscreen> {
 
                     // Call updateCalendarData
                     await updateCalendarData(
-                        date, status, remarkController.text);
+                        date, status!, remarkController.text);
 
                     if (status == 'present') {
                       // Parsing date and time
                       DateTime checkInDate = DateTime.parse(date);
-                      DateTime currentDateTime = DateTime.now();
+                      //DateTime currentDateTime = DateTime.now();
 
                       // Formatting date and time
-                      String formattedCurrentTime =
-                          DateFormat('yyyy-MM-dd HH:mm:ss')
-                              .format(currentDateTime);
+                      // String formattedCurrentTime =
+                      // DateFormat('yyyy-MM-dd HH:mm:ss')
+                      //     .format(currentDateTime);
 
                       // Format the check-in and check-out times properly
                       DateFormat inputFormat = DateFormat(
                           'hh:mm a'); // Change format to include AM/PM
                       DateTime parsedCheckInTime =
-                          inputFormat.parse(startTimeController.text);
+                      inputFormat.parse(startTimeController.text);
                       DateTime parsedCheckOutTime =
-                          inputFormat.parse(endTimeController.text);
+                      inputFormat.parse(endTimeController.text);
 
                       // Create new DateTime objects for formattedCheckInTime and formattedCheckOutTime
                       String formattedCheckInTime =
-                          DateFormat('yyyy-MM-dd HH:mm:ss').format(
+                      DateFormat('yyyy-MM-dd HH:mm:ss').format(
                         DateTime(
                             checkInDate.year,
                             checkInDate.month,
@@ -775,7 +837,7 @@ class _TodayscreenState extends State<Todayscreen> {
                       );
 
                       String formattedCheckOutTime =
-                          DateFormat('yyyy-MM-dd HH:mm:ss').format(
+                      DateFormat('yyyy-MM-dd HH:mm:ss').format(
                         DateTime(
                             checkInDate.year,
                             checkInDate.month,
@@ -802,7 +864,7 @@ class _TodayscreenState extends State<Todayscreen> {
                             "punch_in_address": "",
                             "punch_in_remark": "Previous Missing Status",
                             "working_location": "Not Known",
-                            "punch_in_date_time": formattedCurrentTime,
+                            "punch_in_date_time": formattedCheckInTime,
                             "attendancedate": formattedCheckInTime,
                             "attendance_manager_remark": "",
                             "in_geofence": "yes",
@@ -854,7 +916,8 @@ class _TodayscreenState extends State<Todayscreen> {
                                 "punch_out_address": "",
                                 "punch_out_remark": "Previous Missing Status",
                                 "working_location": "Not known",
-                                "punch_out_date_time": formattedCurrentTime,
+
+                                "punch_out_date_time":formattedCheckOutTime,
                                 "attendancedate": formattedCheckOutTime,
                                 "in_geofence": "yes",
                               }),
@@ -884,7 +947,7 @@ class _TodayscreenState extends State<Todayscreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                     content:
-                                        Text('Error in creating activity')),
+                                    Text('Error in creating activity')),
                               );
                             }
                           }
@@ -893,7 +956,7 @@ class _TodayscreenState extends State<Todayscreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                   content:
-                                      Text('Error in marking attendance in')),
+                                  Text('Error in marking attendance in')),
                             );
                           }
                         }
@@ -948,13 +1011,13 @@ class _TodayscreenState extends State<Todayscreen> {
       String startDateTime = '${currentDate} ${report['start_date_time']}';
       String endDateTime = '${currentDate} ${report['end_date_time']}';
       DateTime parsedStartDateTime =
-          DateFormat('yyyy-MM-dd h:mm a').parse(startDateTime);
+      DateFormat('yyyy-MM-dd h:mm a').parse(startDateTime);
       DateTime parsedEndDateTime =
-          DateFormat('yyyy-MM-dd h:mm a').parse(endDateTime);
+      DateFormat('yyyy-MM-dd h:mm a').parse(endDateTime);
       String formattedStartDateTime =
-          DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedStartDateTime);
+      DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedStartDateTime);
       String formattedEndDateTime =
-          DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedEndDateTime);
+      DateFormat('yyyy-MM-dd HH:mm:ss').format(parsedEndDateTime);
       return {
         'start_date_time': formattedStartDateTime,
         'end_date_time': formattedEndDateTime,
@@ -972,13 +1035,13 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       final response = await http
           .post(
-            Uri.parse(apiUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: payload,
-          )
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: payload,
+      )
           .timeout(Duration(seconds: 10)); // Timeout after 10 seconds
 
       // Log the response for debugging
@@ -1006,9 +1069,21 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
+
   Future<void> handleCheckInProcess(BuildContext context) async {
     try {
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
       final position = await fetchUserLocation();
+      Navigator.of(context).pop();
       bool shouldProceed = false;
 
       final response = await http.post(
@@ -1046,8 +1121,9 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  Future<void> handleCheckIn(
-      Position position, String reason, String workingLocation) async {
+
+  Future<void> handleCheckIn(Position position, String reason,
+      String workingLocation) async {
     if (isHandlingCheckIn) return;
     isHandlingCheckIn = true;
 
@@ -1058,7 +1134,7 @@ class _TodayscreenState extends State<Todayscreen> {
       String checkInTimeString = DateFormat('hh:mm a').format(DateTime.now());
       String checkInDate = now.toIso8601String();
       String checkInLocationString =
-          await fetchLocationDetails(position.latitude, position.longitude);
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       final checkInBody = {
         "device_id": widget.deviceId,
@@ -1099,6 +1175,8 @@ class _TodayscreenState extends State<Todayscreen> {
             this.workingLocation = workingLocation;
           });
 
+          // Save check-in data in SharedPreferences
+          await prefs.setString('workingLocation', workingLocation);
           await prefs.setString('checkInTime', checkInTimeString);
           await prefs.setString('checkInDate', checkInDate);
           await prefs.setString('checkInLocation', checkInLocationString);
@@ -1106,35 +1184,8 @@ class _TodayscreenState extends State<Todayscreen> {
           await prefs.setDouble('checkInLatitude', position.latitude);
           await prefs.setDouble('checkInLongitude', position.longitude);
           await prefs.setBool('isCheckedIn', true);
+          await prefs.setString('workingLocation', workingLocation);
 
-          // Schedule a notification for 10 hours later
-          var scheduledNotificationDateTime =
-              tz.TZDateTime.now(tz.local).add(Duration(hours: 10));
-          var androidPlatformChannelSpecifics = AndroidNotificationDetails(
-            'your_channel_id',
-            'your_channel_name',
-            importance: Importance.max,
-            priority: Priority.high,
-            ticker: 'ticker',
-          );
-
-          var platformChannelSpecifics =
-              NotificationDetails(android: androidPlatformChannelSpecifics);
-
-          print('Scheduling notification...');
-          print('Current time: $now');
-          print('Scheduled time: $scheduledNotificationDateTime');
-
-          await flutterLocalNotificationsPlugin.zonedSchedule(
-            0,
-            'Check Out Reminder',
-            'Your working hours are over. Please check out.',
-            scheduledNotificationDateTime,
-            platformChannelSpecifics,
-            androidAllowWhileIdle: true,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
-          );
         } else {
           throw Exception(responseData["message"]);
         }
@@ -1150,9 +1201,15 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
+
+
+
+
+
   bool isLoading = false;
-  Future<void> updateCalendarData(
-      String date, String status, String remark) async {
+
+  Future<void> updateCalendarData(String date, String status,
+      String remark) async {
     setState(() {
       _isLoading = true; // Show loading indicator
     });
@@ -1164,21 +1221,21 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       final response = await http
           .post(
-            Uri.parse('http://35.154.148.75/zarvis/api/v3/updateCalenderData'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'emp_code': emp_code,
-              'date': date,
-              'client_id': widget.clientId,
-              'project_code': widget.projectCode,
-              'location_id': widget.locationId,
-              'status': status,
-              'remark': remark,
-            }),
-          )
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/updateCalenderData'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'emp_code': emp_code,
+          'date': date,
+          'client_id': widget.clientId,
+          'project_code': widget.projectCode,
+          'location_id': widget.locationId,
+          'status': status,
+          'remark': remark,
+        }),
+      )
           .timeout(Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -1207,24 +1264,54 @@ class _TodayscreenState extends State<Todayscreen> {
     }
   }
 
-  Future<void> handleCheckOut(
-      Position position, String reason, String workingLocation) async {
+  Future<void> handleCheckOut(Position position, String reason, String workingLocation) async {
     final now = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
+      // Prepare payload for checkPreviousOneWeekStatus API
+      final previousStatusPayload = {
+        "emp_id": prefs.getString('emp_code')
+      };
+
+
+      // Debug print: Log payload data going to checkPreviousOneWeekStatus API
+      print("Payload for checkPreviousOneWeekStatus API: $previousStatusPayload");
+      final token = widget.token;
+      // Call API to get the p_date
+      final previousStatusResponse = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/checkPreviousOneWeekStatus'),
+        headers: {
+          "Content-Type": "application/json",
+          'Authorization': 'Bearer $token',
+        },
+
+
+        body: jsonEncode(previousStatusPayload),
+      );
+
+      String checkInDateOnly;
+
+      if (previousStatusResponse.statusCode == 200) {
+        final responseData = jsonDecode(previousStatusResponse.body);
+
+        // Debug print: Log response data from checkPreviousOneWeekStatus API
+        print("Response from checkPreviousOneWeekStatus API: $responseData");
+
+        if (responseData["status"] == "1" && responseData["date"].isNotEmpty) {
+          checkInDateOnly = responseData["date"]; // Always use the API response for check-in date
+        } else {
+          throw Exception("Invalid response: date not available");
+        }
+      } else {
+        throw Exception("API Error: ${previousStatusResponse.body}");
+      }
+
+      // Format the checkout date and time
+      String checkOutDateTime = "$checkInDateOnly ${DateFormat('HH:mm:ss').format(now)}";
+      String checkOutLocationString = await fetchLocationDetails(position.latitude, position.longitude);
       String checkOutTimeString = DateFormat('hh:mm a').format(now);
-      String checkOutDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      String checkOutLocationString =
-          await fetchLocationDetails(position.latitude, position.longitude);
-
-      // Calculate duration between check-in and check-out
-      DateTime lastCheckedDate =
-          DateTime.parse(prefs.getString('checkInDate') ?? now.toString());
-      Duration duration = now.difference(lastCheckedDate);
-      String totalDuration = formatDuration(duration);
-
-      // API body
+      // Prepare payload for empSignOut API
       final checkOutBody = {
         "device_id": widget.deviceId,
         "emp_code": widget.empCode,
@@ -1237,11 +1324,15 @@ class _TodayscreenState extends State<Todayscreen> {
         "punch_out_address": checkOutLocationString,
         "punch_out_remark": reason,
         "working_location": workingLocation,
-        "punch_out_date_time": checkOutDate,
-        "attendancedate": checkOutDate, //attendancedate
+        "punch_out_date_time": now.toIso8601String(),
+        "attendancedate": checkOutDateTime,
         "in_geofence": "yes"
       };
 
+      // Debug print: Log payload data going to empSignOut API
+      print("Payload for empSignOut API: $checkOutBody");
+
+      // Make empSignOut API call
       final response = await http.post(
         Uri.parse('http://35.154.148.75/zarvis/api/v3/empSignOut'),
         headers: {
@@ -1250,6 +1341,9 @@ class _TodayscreenState extends State<Todayscreen> {
         },
         body: jsonEncode(checkOutBody),
       );
+
+      // Debug print: Log response data from empSignOut API
+      print("Response from empSignOut API: ${response.body}");
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
@@ -1260,15 +1354,12 @@ class _TodayscreenState extends State<Todayscreen> {
             isCheckedIn = false;
             sliderText = "Slide to Check In";
             this.workingLocation = workingLocation;
-            totalHoursWorked = totalDuration; // Update total hours worked
           });
 
           await prefs.setString('checkOutTime', checkOutTimeString);
-          await prefs.setString('checkOutDate', checkOutDate);
+          await prefs.setString('checkOutDate', checkOutDateTime);
           await prefs.setString('checkOutLocation', checkOutLocationString);
           await prefs.setBool('isCheckedIn', false);
-          await prefs.setString(
-              'totalHoursWorked', totalDuration); // Save total hours worked
         } else {
           log(responseData["message"]);
           throw Exception(responseData["message"]);
@@ -1282,6 +1373,9 @@ class _TodayscreenState extends State<Todayscreen> {
       ));
     }
   }
+
+
+
   //bool isDayCompleted = false;
 
   String currentAddress = "";
@@ -1289,11 +1383,12 @@ class _TodayscreenState extends State<Todayscreen> {
   Future<void> getCurrentAddress(double latitude, double longitude) async {
     try {
       final List<Placemark> placemarks =
-          await placemarkFromCoordinates(latitude, longitude);
+      await placemarkFromCoordinates(latitude, longitude);
       final Placemark place = placemarks[0];
       setState(() {
         currentAddress =
-            "${place.name}, ${place.locality}, ${place.postalCode}, ${place.country}";
+        "${place.name}, ${place.locality}, ${place.postalCode}, ${place
+            .country}";
       });
     } catch (e) {
       print("Error fetching address: $e");
@@ -1310,7 +1405,7 @@ class _TodayscreenState extends State<Todayscreen> {
     if (locationPermissionStatus.isGranted) {
       Position position = await fetchUserLocation();
       String initialAddress =
-          await fetchLocationDetails(position.latitude, position.longitude);
+      await fetchLocationDetails(position.latitude, position.longitude);
 
       showDialog(
         context: context,
@@ -1359,7 +1454,7 @@ class _TodayscreenState extends State<Todayscreen> {
                                 mini: true,
                                 onPressed: () async {
                                   Position newPosition =
-                                      await fetchUserLocation();
+                                  await fetchUserLocation();
                                   setState(() {
                                     position = newPosition;
                                   });
@@ -1498,102 +1593,227 @@ class _TodayscreenState extends State<Todayscreen> {
           prefs.getString('checkOutWorkingLocation') ?? "--";
       isCheckedIn = prefs.getBool('isCheckedIn') ?? false;
       sliderText = isCheckedIn ? "Slide to Check Out" : "Slide to Check In";
-    });
+      workingLocation = prefs.getString('workingLocation') ?? "--";
+    }
+    );
+  }
+  // Timer to calculate elapsed time based on check-in time
+
+
+
+
+
+
+  // void showUpdateTimeDialog(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       String selectedHour;
+  //       TextEditingController remarkController = TextEditingController();
+  //
+  //       return AlertDialog(
+  //         title: Text("Update Time"),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: <Widget>[
+  //             DropdownButtonFormField<String>(
+  //               decoration: InputDecoration(
+  //                 labelText: 'Select Hours',
+  //                 border: OutlineInputBorder(),
+  //               ),
+  //               items: [
+  //                 '1 hr',
+  //                 '2 hrs',
+  //                 '3 hrs',
+  //                 '4 hrs',
+  //                 'Until next shift',
+  //               ].map((String value) {
+  //                 return DropdownMenuItem<String>(
+  //                   value: value,
+  //                   child: Text(value),
+  //                 );
+  //               }).toList(),
+  //               onChanged: (newValue) {
+  //                 selectedHour = newValue!;
+  //               },
+  //             ),
+  //             SizedBox(height: 20),
+  //             TextField(
+  //               controller: remarkController,
+  //               decoration: InputDecoration(
+  //                 labelText: 'Remark/Reason',
+  //                 border: OutlineInputBorder(),
+  //               ),
+  //               maxLines: 1,
+  //             ),
+  //           ],
+  //         ),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             child: Text("Cancel"),
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //           ),
+  //           ElevatedButton(
+  //             child: Text("Update"),
+  //             onPressed: () {
+  //               // Handle the update action with selectedHour and remarkController.text
+  //               Navigator.of(context).pop();
+  //             },
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+  //
+  // Fetch notifications from API
+  Future<List<Map<String, dynamic>>> fetchNotifications() async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://35.154.148.75/zarvis/api/v3/get_notifications'),
+        body: {
+          'emp_code': widget.empCode,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['status'] == "1") {
+          List notifications = responseData['data'];
+          return List<Map<String, dynamic>>.from(notifications);
+        }
+      }
+    } catch (e) {
+      print("Error fetching notifications: $e");
+    }
+    return [];
   }
 
-  String formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, "0");
-    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
-    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
-    return "${twoDigits(duration.inHours)}:$twoDigitMinutes:$twoDigitSeconds";
-  }
+  // Display Notifications in a Dialog
+  void showNotificationsDialog(BuildContext context) async {
+    final notifications = await fetchNotifications();
 
-  void showUpdateTimeDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        String selectedHour;
-        TextEditingController remarkController = TextEditingController();
+      builder: (context) =>
+          AlertDialog(
+            title: Text("Notifications"),
+            content: notifications.isEmpty
+                ? Text("No new notifications")
+                : SizedBox(
+              height: 300.h,
+              width: 350.w,
+              child: ListView.builder(
+                itemCount: notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = notifications[index];
+                  final title = notification['title'];
+                  final body = notification['body'];
+                  final createdAt = notification['created_at'];
 
-        return AlertDialog(
-          title: Text("Update Time"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Select Hours',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  '1 hr',
-                  '2 hrs',
-                  '3 hrs',
-                  '4 hrs',
-                  'Until next shift',
-                ].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
+                  return Card(
+                    margin: EdgeInsets.symmetric(
+                        vertical: 8.0, horizontal: 4.0),
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title and Date Row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              Text(
+                                createdAt,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Body of Notification
+                          Text(
+                            body,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   );
-                }).toList(),
-                onChanged: (newValue) {
-                  selectedHour = newValue!;
                 },
               ),
-              SizedBox(height: 20),
-              TextField(
-                controller: remarkController,
-                decoration: InputDecoration(
-                  labelText: 'Remark/Reason',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 1,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Close"),
               ),
             ],
           ),
-          actions: <Widget>[
-            TextButton(
-              child: Text("Cancel"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              child: Text("Update"),
-              onPressed: () {
-                // Handle the update action with selectedHour and remarkController.text
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    screenHeight = MediaQuery.of(context).size.height;
-    screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    double screenWidth = MediaQuery
+        .of(context)
+        .size
+        .width;
 
     return SafeArea(
       child: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0.h),
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
           child: Column(
             children: [
-              Container(
-                alignment: Alignment.centerLeft,
-                margin: const EdgeInsets.only(top: 1, bottom: 0),
-                child: Text(
-                  "Welcome, ",
-                  style: TextStyle(
-                    color: Colors.black54,
-                    fontSize: screenHeight / 31.h,
+              // Welcome Text with Bell Icon
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Welcome, ",
+                    style: TextStyle(
+                      color: Colors.black54,
+                      fontSize: screenHeight / 31,
+                    ),
                   ),
-                ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.notifications,
+                      color: Colors.black54,
+                      size: screenHeight / 28,
+                    ),
+                    onPressed: () {
+                      showNotificationsDialog(context);
+                    },
+
+                  ),
+                ],
               ),
+              // Employee Name
               Container(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -1604,6 +1824,7 @@ class _TodayscreenState extends State<Todayscreen> {
                   ),
                 ),
               ),
+              // Today's Status
               Container(
                 alignment: Alignment.centerLeft,
                 margin: const EdgeInsets.only(top: 20),
@@ -1611,14 +1832,15 @@ class _TodayscreenState extends State<Todayscreen> {
                   "Today's Status",
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: screenHeight / 28.h,
+                    fontSize: screenHeight / 28,
                   ),
                 ),
               ),
+              // Check-in and Check-out Status
               Container(
                 margin: const EdgeInsets.only(top: 12, bottom: 32),
-                height: 150.h,
-                decoration: const BoxDecoration(
+                height: 150,
+                decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
@@ -1631,60 +1853,61 @@ class _TodayscreenState extends State<Todayscreen> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // Check In
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             "Check In",
                             style: TextStyle(
-                                fontSize: screenWidth / 18.h,
-                                color: Colors.black54),
+                              fontSize: screenWidth / 18,
+                              color: Colors.black54,
+                            ),
                           ),
                           Text(
                             checkInTime,
                             style: TextStyle(
-                                fontSize: screenWidth / 18.h,
-                                fontWeight: FontWeight.bold),
+                              fontSize: screenWidth / 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
                             checkInLocation,
                             style: TextStyle(
-                                fontSize: screenWidth / 26.w,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey),
+                              fontSize: screenWidth / 26,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
                     ),
+                    // Check Out
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             "Check Out",
                             style: TextStyle(
-                              fontSize: screenWidth / 18.sp,
+                              fontSize: screenWidth / 18,
                               color: Colors.black54,
                             ),
                           ),
                           Text(
                             checkOutTime,
                             style: TextStyle(
-                                fontSize: screenWidth / 18.sp,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold),
+                              fontSize: screenWidth / 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Text(
                             checkOutLocation,
                             style: TextStyle(
-                                fontSize: screenWidth / 26.w,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey),
+                              fontSize: screenWidth / 26,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -1692,58 +1915,53 @@ class _TodayscreenState extends State<Todayscreen> {
                   ],
                 ),
               ),
+              // Current Date
               Container(
                 alignment: Alignment.centerLeft,
                 child: RichText(
                   text: TextSpan(
-                    text: DateTime.now().day.toString(),
+                    text: DateTime
+                        .now()
+                        .day
+                        .toString(),
                     style: TextStyle(
-                        color: Colors.red,
-                        fontSize: screenWidth / 15.w,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.red,
+                      fontSize: screenWidth / 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                     children: [
                       TextSpan(
                         text: DateFormat(' MMMM yyyy').format(DateTime.now()),
                         style: TextStyle(
                           color: Colors.black,
-                          fontSize: screenWidth / 20.w,
-                          fontWeight: FontWeight.bold,
+                          fontSize: screenWidth / 20,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              SizedBox(
-                height: 10,
-              ),
+              SizedBox(height: 10),
+              // Current Time
               Container(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   currentTime,
-                  style: TextStyle(fontSize: screenWidth / 18.w),
+                  style: TextStyle(fontSize: screenWidth / 18),
                 ),
               ),
-              SizedBox(
-                height: 10,
-              ),
-              Container(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Total Hours Worked: $totalHoursWorked",
-                  style: TextStyle(fontSize: screenWidth / 18.w),
-                ),
-              ),
-              SizedBox(
-                height: 10,
-              ),
+              SizedBox(height: 10),
+              // Total Hours Worked
+
+              SizedBox(height: 10),
+              // Working Location
               Container(
                 alignment: Alignment.centerLeft,
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   "Working Location: $workingLocation",
                   style: TextStyle(
-                    fontSize: screenWidth / 18.sp,
+                    fontSize: screenWidth / 18,
                     color: workingLocation == "In Office"
                         ? Colors.green
                         : Colors.red,
@@ -1751,6 +1969,7 @@ class _TodayscreenState extends State<Todayscreen> {
                   ),
                 ),
               ),
+              // Slide Action for Check-Out
               if (!isDayCompleted)
                 SlideAction(
                   innerColor: Colors.red,
@@ -1789,21 +2008,21 @@ class _TodayscreenState extends State<Todayscreen> {
                         label: Text('Update Location'),
                       ),
                     ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          showUpdateTimeDialog(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white),
-                        icon: Icon(Icons.access_time),
-                        label: Text('Update Time'),
-                      ),
-                    ),
-                  ],
-                ),
+                    SizedBox(width: 8),
+                //     Expanded(
+                //       child: ElevatedButton.icon(
+                //         onPressed: () {
+                //           showUpdateTimeDialog(context);
+                //         },
+                //         style: ElevatedButton.styleFrom(
+                //             backgroundColor: Colors.red,
+                //             foregroundColor: Colors.white),
+                //         icon: Icon(Icons.access_time),
+                //         label: Text('Update Time'),
+                //       ),
+                //     ),
+                //   ],
+                // ),
               if (isDayCompleted)
                 Container(
                   margin: const EdgeInsets.symmetric(vertical: 20),
@@ -1822,8 +2041,12 @@ class _TodayscreenState extends State<Todayscreen> {
                 ),
             ],
           ),
-        ),
+      ]
       ),
-    );
+          ),
+        )
+      );
+
+
   }
 }

@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-// Model class to represent leave event data
 class LeaveEvent {
   final String name;
   final String empCode;
@@ -34,7 +33,7 @@ class EventCalendar extends StatefulWidget {
 }
 
 class _EventCalendarState extends State<EventCalendar> {
-  late Map<DateTime, List<LeaveEvent>> _events; // Ensure this is a Map<DateTime, List<LeaveEvent>>
+  late Map<DateTime, List<LeaveEvent>> _events;
   late List<LeaveEvent> _selectedEvents;
   DateTime _selectedDay = DateTime.now();
   DateTime _focusedDay = DateTime.now();
@@ -42,7 +41,7 @@ class _EventCalendarState extends State<EventCalendar> {
   @override
   void initState() {
     super.initState();
-    _events = {}; // Initialize as empty map for LeaveEvent
+    _events = {};
     _selectedEvents = [];
   }
 
@@ -64,7 +63,7 @@ class _EventCalendarState extends State<EventCalendar> {
         },
         body: jsonEncode(<String, dynamic>{
           'rm_emp_code': rmEmpCode,
-          'date': selectedDate.toIso8601String(), // Convert DateTime to ISO 8601 format
+          'date': selectedDate.toIso8601String(),
         }),
       );
 
@@ -84,7 +83,7 @@ class _EventCalendarState extends State<EventCalendar> {
 
           setState(() {
             _selectedEvents = events;
-            _events[selectedDate] = events; // Store events for the selected date
+            _events[selectedDate] = events;
           });
         } else {
           setState(() {
@@ -106,14 +105,14 @@ class _EventCalendarState extends State<EventCalendar> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text(
-            "Emp leave calendar",
+            "Emp Leave Calendar",
             style: TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.red,
         ),
         body: Center(
           child: Padding(
-            padding: EdgeInsets.all(16.w), // Use ScreenUtil for padding
+            padding: EdgeInsets.all(16.w),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -128,9 +127,15 @@ class _EventCalendarState extends State<EventCalendar> {
                     setState(() {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
-                      _selectedEvents = [];
                     });
                     _fetchLeaveInfo(selectedDay);
+                  },
+                  onPageChanged: (focusedDay) {
+                    setState(() {
+                      // Clear events when changing the month
+                      _focusedDay = focusedDay;
+                      _selectedEvents = [];
+                    });
                   },
                   eventLoader: _getEventsForDay,
                   calendarStyle: CalendarStyle(
@@ -144,7 +149,7 @@ class _EventCalendarState extends State<EventCalendar> {
                     formatButtonVisible: false,
                   ),
                 ),
-                const SizedBox(height: 20.0),
+                SizedBox(height: 20.h),
                 Expanded(
                   child: _selectedEvents.isNotEmpty
                       ? ListView.builder(
@@ -158,7 +163,7 @@ class _EventCalendarState extends State<EventCalendar> {
                       : Center(
                     child: Text(
                       'No events found for this day.',
-                      style: TextStyle(fontSize: 16.sp), // Use ScreenUtil for font size
+                      style: TextStyle(fontSize: 16.sp),
                     ),
                   ),
                 ),
@@ -170,7 +175,6 @@ class _EventCalendarState extends State<EventCalendar> {
     );
   }
 }
-
 class LeaveEventItem extends StatefulWidget {
   final LeaveEvent leaveEvent;
 
@@ -192,11 +196,11 @@ class _LeaveEventItemState extends State<LeaveEventItem> {
         });
       },
       child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h), // Use ScreenUtil for margin
-        padding: EdgeInsets.all(12.w), // Use ScreenUtil for padding
+        margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           border: Border.all(),
-          borderRadius: BorderRadius.circular(12.0),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,13 +208,21 @@ class _LeaveEventItemState extends State<LeaveEventItem> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Name: ${widget.leaveEvent.name}',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp), // Use ScreenUtil for font size
+                Expanded(
+                  child: Text(
+                    'Name: ${widget.leaveEvent.name}',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Text(
-                  'Emp Code: ${widget.leaveEvent.empCode}',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp), // Use ScreenUtil for font size
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    'Emp Code: ${widget.leaveEvent.empCode}',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.end,
+                  ),
                 ),
               ],
             ),
@@ -218,10 +230,19 @@ class _LeaveEventItemState extends State<LeaveEventItem> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(height: 8.0),
-                  Text('Leave Message: ${widget.leaveEvent.leaveMessage}', style: TextStyle(fontSize: 14.sp)), // Use ScreenUtil for font size
-                  Text('Leave Type: ${widget.leaveEvent.leaveType}', style: TextStyle(fontSize: 14.sp)), // Use ScreenUtil for font size
-                  Text('Status: ${widget.leaveEvent.status}', style: TextStyle(fontSize: 14.sp)), // Use ScreenUtil for font size
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Leave Message: ${widget.leaveEvent.leaveMessage}',
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
+                  Text(
+                    'Leave Type: ${widget.leaveEvent.leaveType}',
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
+                  Text(
+                    'Status: ${widget.leaveEvent.status}',
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
                 ],
               ),
           ],

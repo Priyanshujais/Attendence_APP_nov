@@ -431,7 +431,6 @@ class _DashbordscreenState extends State<Dashbordscreen> {
                             style: TextStyle(
                               fontSize: 24, // Adjust font size as needed
                               fontWeight: FontWeight.bold,
-                              color: Colors.red, // Color for the letters
                             ),
                           ),
                         ),

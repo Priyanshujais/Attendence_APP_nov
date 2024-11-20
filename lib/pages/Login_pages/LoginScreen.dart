@@ -41,20 +41,26 @@ class _LoginScreenState extends State<LoginScreen> {
       print("Location permission granted");
     } else if (locationStatus.isDenied) {
       print("Location permission denied");
-
+      return;
+    } else if (locationStatus.isPermanentlyDenied) {
+      openAppSettings();
+      return;
     }
 
-    // Request notification permission for Android 13+
-    if (await Permission.notification.isGranted) {
+    // Request notification permission
+    var notificationStatus = await Permission.notification.request();
+    if (notificationStatus.isGranted) {
       print("Notification permission granted");
-    } else {
-      var notificationStatus = await Permission.notification.request();
-      if (notificationStatus.isGranted) {
-        print("Notification permission granted");
-      } else {
-        print("Notification permission denied");
-      }
+    } else if (notificationStatus.isDenied) {
+      print("Notification permission denied");
+      return;
+    } else if (notificationStatus.isPermanentlyDenied) {
+      openAppSettings();
+      return;
     }
+
+
+    
   }
   Future<String?> getStoredFCMToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
