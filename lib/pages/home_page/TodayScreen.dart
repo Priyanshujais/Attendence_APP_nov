@@ -108,7 +108,7 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       final response = await http
           .post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/initializeStatus'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/initializeStatus'),
         headers: {
           "Content-Type": "application/json",
           'Authorization': 'Bearer ${widget.token}',
@@ -464,56 +464,8 @@ class _TodayscreenState extends State<Todayscreen> {
       showCustomAlert(context, 'Location permission is required to continue.');
     }
   }
-  void showAddReportDialog(BuildContext context,
-      List<Map<String, String>> reports,
-      Function onReportAdded,) async {
-
-
-    Future<String?> getShiftCode() async {
-      const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/user';
-
-      try {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('token');  // Retrieve the token from SharedPreferences
-
-        if (token == null) {
-          print("No token found.");
-          return null;  // If token is not available, return null
-        }
-
-        // Make API call
-        final response = await http.get(
-          Uri.parse(apiUrl),
-          headers: {
-            'Authorization': 'Bearer $token',  // Pass token in Authorization header
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final userDetails = data['userDetails'];
-
-          // Extract the shift_code from the response
-          String shiftCode = userDetails['shift_code'];
-          print("Shift Code from API: $shiftCode");
-
-          return shiftCode;  // Return the shift code
-        } else {
-          print("Failed to fetch user data: ${response.statusCode}");
-          return null;
-        }
-      } catch (e) {
-        print("Error fetching shift code: $e");
-        return null;
-      }
-    }
-
-    String? shift = await getShiftCode();
-    print("shift: $shift");
-
-
-    // print('Retrieved Shift Code: $shift');// he shift value you saved earlier
-
+  void showAddReportDialog(
+      BuildContext context, List<Map<String, String>> reports, Function onReportAdded) async {
     TextEditingController startTimeController = TextEditingController();
     TextEditingController endTimeController = TextEditingController();
     TextEditingController taskController = TextEditingController();
@@ -521,111 +473,103 @@ class _TodayscreenState extends State<Todayscreen> {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Report'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: startTimeController,
-                decoration: const InputDecoration(labelText: 'Start Time'),
-                readOnly: true,
-                onTap: () async {
-                  TimeOfDay? pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (pickedTime != null) {
-                    startTimeController.text = pickedTime.format(context);
-                  }
-                },
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Report'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Show list of existing reports
+                    if (reports.isNotEmpty)
+                      Column(
+                        children: reports.map((report) {
+                          return Card(
+                            elevation: 2,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            child: ListTile(
+                              title: Text(
+                                  "Start: ${report['start_date_time']} - End: ${report['end_date_time']}"),
+                              subtitle: Text("Task: ${report['activity']}"),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    const SizedBox(height: 10),
+                    // New Report Entry Form
+                    TextField(
+                      controller: startTimeController,
+                      decoration: const InputDecoration(labelText: 'Start Time'),
+                      readOnly: true,
+                      onTap: () async {
+                        TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (pickedTime != null) {
+                          startTimeController.text = pickedTime.format(context);
+                        }
+                      },
+                    ),
+                    TextField(
+                      controller: endTimeController,
+                      decoration: const InputDecoration(labelText: 'End Time'),
+                      readOnly: true,
+                      onTap: () async {
+                        TimeOfDay? pickedTime = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (pickedTime != null) {
+                          endTimeController.text = pickedTime.format(context);
+                        }
+                      },
+                    ),
+                    TextField(
+                      controller: taskController,
+                      decoration:
+                      const InputDecoration(labelText: 'Task Description'),
+                    ),
+                  ],
+                ),
               ),
-              TextField(
-                controller: endTimeController,
-                decoration: const InputDecoration(labelText: 'End Time'),
-                readOnly: true,
-                onTap: () async {
-                  TimeOfDay? pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (pickedTime != null) {
-                    endTimeController.text = pickedTime.format(context);
-                  }
-                },
-              ),
-              TextField(
-                controller: taskController,
-                decoration: const InputDecoration(labelText: 'Task Description'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (startTimeController.text.isNotEmpty &&
-                    endTimeController.text.isNotEmpty &&
-                    taskController.text.isNotEmpty) {
-
-                  // Function to parse time considering AM/PM
-                  TimeOfDay parseTime(String time) {
-                    final parts = time.split(' ');
-                    final timeParts = parts[0].split(':');
-                    int hour = int.parse(timeParts[0]);
-                    int minute = int.parse(timeParts[1]);
-
-                    if (parts[1].toLowerCase() == 'pm' && hour != 12) {
-                      hour += 12;
-                    } else if (parts[1].toLowerCase() == 'am' && hour == 12) {
-                      hour = 0;
-                    }
-
-                    return TimeOfDay(hour: hour, minute: minute);
-                  }
-
-                  final startTime = parseTime(startTimeController.text);
-                  final endTime = parseTime(endTimeController.text);
-
-                  // Only apply validation if the user has SHIFT-1
-                  if (shift == 'SHIFT-1') {
-                    // Compare the times
-                    if (startTime.hour < endTime.hour ||
-                        (startTime.hour == endTime.hour &&
-                            startTime.minute < endTime.minute)) {
-                      reports.add({
-                        "start_date_time": startTimeController.text,
-                        "end_date_time": endTimeController.text,
-                        "activity": taskController.text,
-                      });
-                      onReportAdded();
-                      Navigator.of(context).pop();
-                    } else {
-                      showCustomAlert(
-                          context, "End time must be greater than start time");
-                    }
-                  } else {
-                    // If user is on a different shift (SHIFT-2, etc.), skip validation
-                    reports.add({
-                      "start_date_time": startTimeController.text,
-                      "end_date_time": endTimeController.text,
-                      "activity": taskController.text,
-                    });
-                    onReportAdded();
+              actions: [
+                TextButton(
+                  onPressed: () {
                     Navigator.of(context).pop();
-                  }
-                } else {
-                  showCustomAlert(context, "All report fields are required");
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (startTimeController.text.isNotEmpty &&
+                        endTimeController.text.isNotEmpty &&
+                        taskController.text.isNotEmpty) {
+                      // Add the new report to the list
+                      setState(() {
+                        reports.add({
+                          "start_date_time": startTimeController.text,
+                          "end_date_time": endTimeController.text,
+                          "activity": taskController.text,
+                        });
+                      });
+
+                      // Clear the input fields for the next report
+                      startTimeController.clear();
+                      endTimeController.clear();
+                      taskController.clear();
+
+                      onReportAdded();
+                    } else {
+                      showCustomAlert(context, "All report fields are required");
+                    }
+                  },
+                  child: const Text('Add Report'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -850,7 +794,7 @@ class _TodayscreenState extends State<Todayscreen> {
                         // Call empSignIn API
                         var signInResponse = await http.post(
                           Uri.parse(
-                              'http://35.154.148.75/zarvis/api/v3/empSignIn'),
+                              'http://35.154.148.75/zarvis/api/v4/empSignIn'),
                           body: jsonEncode({
                             "device_id": widget.deviceId,
                             "emp_code": widget.empCode,
@@ -879,7 +823,7 @@ class _TodayscreenState extends State<Todayscreen> {
                           // Call createActivity API
                           var createActivityResponse = await http.post(
                             Uri.parse(
-                                'http://35.154.148.75/zarvis/api/v3/createActivity'),
+                                'http://35.154.148.75/zarvis/api/v4/createActivity'),
                             body: jsonEncode({
                               "data": [
                                 {
@@ -902,7 +846,7 @@ class _TodayscreenState extends State<Todayscreen> {
                             // Call empSignOut API only if createActivity was successful
                             var signOutResponse = await http.post(
                               Uri.parse(
-                                  'http://35.154.148.75/zarvis/api/v3/empSignOut'),
+                                  'http://35.154.148.75/zarvis/api/v4/empSignOut'),
                               body: jsonEncode({
                                 "device_id": widget.deviceId,
                                 "emp_code": widget.empCode,
@@ -994,7 +938,7 @@ class _TodayscreenState extends State<Todayscreen> {
   }
 
   Future<void> createActivity(List<Map<String, String>> reports) async {
-    const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/createActivity';
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v4/createActivity';
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
@@ -1088,7 +1032,7 @@ class _TodayscreenState extends State<Todayscreen> {
 
       final response = await http.post(
         Uri.parse(
-            'http://35.154.148.75/zarvis/api/v3/checkPreviousOneWeekStatus'),
+            'http://35.154.148.75/zarvis/api/v4/checkPreviousOneWeekStatus'),
         headers: {"Content-Type": "application/x-www-form-urlencoded"},
         body: {"emp_id": widget.empCode, "token": widget.token},
       );
@@ -1156,7 +1100,7 @@ class _TodayscreenState extends State<Todayscreen> {
       };
 
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/empSignIn'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/empSignIn'),
         headers: {
           "Content-Type": "application/json",
           'Authorization': 'Bearer ${widget.token}',
@@ -1221,7 +1165,7 @@ class _TodayscreenState extends State<Todayscreen> {
     try {
       final response = await http
           .post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/updateCalenderData'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/updateCalenderData'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -1280,7 +1224,7 @@ class _TodayscreenState extends State<Todayscreen> {
       final token = widget.token;
       // Call API to get the p_date
       final previousStatusResponse = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/checkPreviousOneWeekStatus'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/checkPreviousOneWeekStatus'),
         headers: {
           "Content-Type": "application/json",
           'Authorization': 'Bearer $token',
@@ -1334,7 +1278,7 @@ class _TodayscreenState extends State<Todayscreen> {
 
       // Make empSignOut API call
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/empSignOut'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/empSignOut'),
         headers: {
           "Content-Type": "application/json",
           'Authorization': 'Bearer ${widget.token}',
@@ -1551,7 +1495,7 @@ class _TodayscreenState extends State<Todayscreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/updatelocation'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/updatelocation'),
         headers: {
           "Content-Type": "application/json",
           'Authorization': 'Bearer ${widget.token}',
@@ -1672,7 +1616,7 @@ class _TodayscreenState extends State<Todayscreen> {
   Future<List<Map<String, dynamic>>> fetchNotifications() async {
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/get_notifications'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/get_notifications'),
         body: {
           'emp_code': widget.empCode,
         },

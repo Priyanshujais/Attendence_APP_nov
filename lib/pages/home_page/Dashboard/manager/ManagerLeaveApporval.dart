@@ -47,7 +47,7 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
       }
 
       final url = Uri.parse(
-          'http://35.154.148.75/zarvis/api/v3/managerleavehistory');
+          'http://35.154.148.75/zarvis/api/v4/managerleavehistory');
       final response = await http.post(
         url,
         headers: {
@@ -171,7 +171,7 @@ class _ManagerLeaveApprovalState extends State<ManagerLeaveApproval> {
       }
 
       final url = Uri.parse(
-          'http://35.154.148.75/zarvis/api/v3/updateleavestatus');
+          'http://35.154.148.75/zarvis/api/v4/updateleavestatus');
       final response = await http.post(
         url,
         headers: {

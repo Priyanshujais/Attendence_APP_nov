@@ -25,7 +25,7 @@ class _ForgetPassState extends State<ForgetPass> {
     }
 
     try {
-      var url = Uri.parse('http://35.154.148.75/zarvis/api/v3/forgetPassword');
+      var url = Uri.parse('http://35.154.148.75/zarvis/api/v4/forgetPassword');
       var response = await http.post(
         url,
         body: jsonEncode({

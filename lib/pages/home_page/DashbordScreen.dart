@@ -115,7 +115,7 @@ class _DashbordscreenState extends State<Dashbordscreen> {
 
 
   Future<void> logoutUser() async {
-    const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/logout';
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v4/logout';
 
     try {
       if (mounted) {

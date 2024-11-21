@@ -55,7 +55,7 @@ class _CalendarscreenState extends State<Calenderscreen> {
       _hasError = false;
     });
 
-    String apiUrl = 'http://35.154.148.75/zarvis/api/v3/getMonthlyListing';
+    String apiUrl = 'http://35.154.148.75/zarvis/api/v4/getMonthlyListing';
     String monthKey = DateFormat('MM-yyyy').format(date);
 
     Map<String, String> headers = {
@@ -138,7 +138,7 @@ class _CalendarscreenState extends State<Calenderscreen> {
 
 
   Future<void> fetchDetailedAttendanceLog(DateTime date) async {
-    String apiUrl = 'http://35.154.148.75/zarvis/api/v3/getSingleDayDetail';
+    String apiUrl = 'http://35.154.148.75/zarvis/api/v4/getSingleDayDetail';
     String dateKey = DateFormat('yyyy-MM-dd').format(date);
 
     Map<String, String> headers = {

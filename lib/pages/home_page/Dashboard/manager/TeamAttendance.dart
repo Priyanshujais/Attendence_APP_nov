@@ -49,7 +49,7 @@ class _TeamattendanceState extends State<Teamattendance> {
 
       if (token != null && companyId != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v3/clientList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v4/clientList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ class _TeamattendanceState extends State<Teamattendance> {
     try {
       if (token != null && empCode != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v3/projectList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v4/projectList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ class _TeamattendanceState extends State<Teamattendance> {
     try {
       if (token != null && empCode != null) {
         final response = await http.post(
-          Uri.parse('http://35.154.148.75/zarvis/api/v3/locationList'),
+          Uri.parse('http://35.154.148.75/zarvis/api/v4/locationList'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',

@@ -39,7 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _fetchData() async {
     try {
       final userResponse = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/verifyEmployee'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/verifyEmployee'),
         body: json
             .encode({'emp_code': widget.emp_code, 'comp_id': widget.comp_id}),
         headers: {'Content-Type': 'application/json'},
@@ -75,7 +75,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _fetchShifts() async {
     try {
       final response = await http
-          .get(Uri.parse('http://35.154.148.75/zarvis/api/v3/shiftList'));
+          .get(Uri.parse('http://35.154.148.75/zarvis/api/v4/shiftList'));
 
       if (response.statusCode == 200) {
         var data = json.decode(response.body);
@@ -118,7 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/register'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/register'),
         body: json.encode({
           'emp_code': employeeId,
           'device_id': 'device_id',

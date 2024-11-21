@@ -62,7 +62,7 @@ class _TeamreportState extends State<Teamreport> {
 
     final response = await http.post(
       Uri.parse(
-          'http://35.154.148.75/zarvis/api/v3/attendance-for-team-leader'),
+          'http://35.154.148.75/zarvis/api/v4/attendance-for-team-leader'),
       headers: {
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer $token',
@@ -129,7 +129,7 @@ class _TeamreportState extends State<Teamreport> {
     try {
       final response = await http.get(
         Uri.parse(
-            'http://35.154.148.75/zarvis/api/v3/emp-listing?rm_emp_code=$rmEmpCode'),
+            'http://35.154.148.75/zarvis/api/v4/emp-listing?rm_emp_code=$rmEmpCode'),
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer $token',

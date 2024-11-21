@@ -32,7 +32,7 @@ class _ProfileScreenState extends State<Profile_Screen> {
   }
 
   Future<void> _fetchData() async {
-    const String apiUrl = 'http://35.154.148.75/zarvis/api/v3/user';
+    const String apiUrl = 'http://35.154.148.75/zarvis/api/v4/user';
 
     setState(() {
       _isLoading = true;

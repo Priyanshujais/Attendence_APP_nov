@@ -63,7 +63,7 @@ class _ChangePasswordState extends State<ChangePassword> {
     String token = prefs.getString("token") ?? "";
     print("Token: $token");
 
-    final url = Uri.parse('http://35.154.148.75/zarvis/api/v3/changePassWithOldPass');
+    final url = Uri.parse('http://35.154.148.75/zarvis/api/v4/changePassWithOldPass');
 
     try {
       final response = await http.post(

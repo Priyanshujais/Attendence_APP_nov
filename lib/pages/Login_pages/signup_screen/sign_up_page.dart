@@ -23,7 +23,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Future<void> _fetchCompanies() async {
     try {
-      final response = await http.get(Uri.parse('http://35.154.148.75/zarvis/api/v3/companyList'));
+      final response = await http.get(Uri.parse('http://35.154.148.75/zarvis/api/v4/companyList'));
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> companies = data['dataset'];
@@ -46,7 +46,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://35.154.148.75/zarvis/api/v3/verifyEmployee'),
+        Uri.parse('http://35.154.148.75/zarvis/api/v4/verifyEmployee'),
         body: json.encode({'emp_code': employeeId, 'comp_id': com_id}),
         headers: {'Content-Type': 'application/json'},
       );

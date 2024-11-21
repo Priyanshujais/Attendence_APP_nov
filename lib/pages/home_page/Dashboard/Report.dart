@@ -42,7 +42,7 @@ class _ReportScreenState extends State<ReportScreen> {
     }
 
     final String formattedDate = "${date.day}-${date.month}-${date.year}";
-    final String url = "http://35.154.148.75/zarvis/api/v3/showActivity?date=$formattedDate";
+    final String url = "http://35.154.148.75/zarvis/api/v4/showActivity?date=$formattedDate";
 
     try {
       final response = await http.get(
